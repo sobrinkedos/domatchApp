@@ -4,6 +4,9 @@ import { TrophyIcon, XMarkIcon } from '@heroicons/react/24/outline';
 export default function ChampionsModal({ isOpen, onClose, champions }) {
   if (!isOpen) return null;
 
+  // Adicionar verificação de segurança
+  if (!champions) return null;
+
   const { topPlayers, topTeam } = champions;
 
   return (
