@@ -7,34 +7,43 @@ function Register() {
     name: '',
     email: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    phone: ''
   });
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const { register } = useAuth();
   const navigate = useNavigate();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setLoading(true);
 
-    // Validações
-    if (formData.password !== formData.confirmPassword) {
-      setError('As senhas não coincidem');
-      return;
-    }
+    try {
+      // Validações
+      if (formData.password !== formData.confirmPassword) {
+        setError('As senhas não coincidem');
+        return;
+      }
 
-    if (formData.password.length < 6) {
-      setError('A senha deve ter pelo menos 6 caracteres');
-      return;
-    }
+      if (formData.password.length < 6) {
+        setError('A senha deve ter pelo menos 6 caracteres');
+        return;
+      }
 
-    const { confirmPassword, ...userData } = formData;
-    const success = register(userData);
-    
-    if (success) {
-      navigate('/');
-    } else {
-      setError('Este email já está em uso');
+      const { confirmPassword, ...userData } = formData;
+      const success = await register(userData);
+      
+      if (success) {
+        navigate('/');
+      } else {
+        setError('Erro ao criar conta. Este email pode já estar em uso.');
+      }
+    } catch (error) {
+      setError('Ocorreu um erro ao criar a conta');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -51,7 +60,7 @@ function Register() {
               to="/login"
               className="font-medium text-blue-600 hover:text-blue-500"
             >
-              faça login se já tiver uma conta
+              faça login na sua conta existente
             </Link>
           </p>
         </div>
@@ -68,19 +77,13 @@ function Register() {
                 name="name"
                 type="text"
                 required
-                className="peer w-full px-4 py-3 border-2 border-gray-200 rounded-lg outline-none transition-all focus:border-blue-500 placeholder-transparent"
-                placeholder="Nome"
+                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                placeholder="Nome completo"
                 value={formData.name}
                 onChange={(e) =>
                   setFormData({ ...formData, name: e.target.value })
                 }
               />
-              <label
-                htmlFor="name"
-                className="absolute left-4 -top-2.5 bg-white px-1 text-sm text-gray-600 transition-all peer-placeholder-shown:top-3.5 peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-400 peer-focus:-top-2.5 peer-focus:text-sm peer-focus:text-blue-500"
-              >
-                Nome completo
-              </label>
             </div>
             <div className="relative">
               <input
@@ -88,19 +91,27 @@ function Register() {
                 name="email"
                 type="email"
                 required
-                className="peer w-full px-4 py-3 border-2 border-gray-200 rounded-lg outline-none transition-all focus:border-blue-500 placeholder-transparent"
+                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
                 placeholder="Email"
                 value={formData.email}
                 onChange={(e) =>
                   setFormData({ ...formData, email: e.target.value })
                 }
               />
-              <label
-                htmlFor="email"
-                className="absolute left-4 -top-2.5 bg-white px-1 text-sm text-gray-600 transition-all peer-placeholder-shown:top-3.5 peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-400 peer-focus:-top-2.5 peer-focus:text-sm peer-focus:text-blue-500"
-              >
-                Email
-              </label>
+            </div>
+            <div className="relative">
+              <input
+                id="phone"
+                name="phone"
+                type="tel"
+                required
+                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                placeholder="Telefone"
+                value={formData.phone}
+                onChange={(e) =>
+                  setFormData({ ...formData, phone: e.target.value })
+                }
+              />
             </div>
             <div className="relative">
               <input
@@ -108,19 +119,13 @@ function Register() {
                 name="password"
                 type="password"
                 required
-                className="peer w-full px-4 py-3 border-2 border-gray-200 rounded-lg outline-none transition-all focus:border-blue-500 placeholder-transparent"
+                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
                 placeholder="Senha"
                 value={formData.password}
                 onChange={(e) =>
                   setFormData({ ...formData, password: e.target.value })
                 }
               />
-              <label
-                htmlFor="password"
-                className="absolute left-4 -top-2.5 bg-white px-1 text-sm text-gray-600 transition-all peer-placeholder-shown:top-3.5 peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-400 peer-focus:-top-2.5 peer-focus:text-sm peer-focus:text-blue-500"
-              >
-                Senha
-              </label>
             </div>
             <div className="relative">
               <input
@@ -128,28 +133,27 @@ function Register() {
                 name="confirmPassword"
                 type="password"
                 required
-                className="peer w-full px-4 py-3 border-2 border-gray-200 rounded-lg outline-none transition-all focus:border-blue-500 placeholder-transparent"
-                placeholder="Confirmar senha"
+                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                placeholder="Confirme a senha"
                 value={formData.confirmPassword}
                 onChange={(e) =>
                   setFormData({ ...formData, confirmPassword: e.target.value })
                 }
               />
-              <label
-                htmlFor="confirmPassword"
-                className="absolute left-4 -top-2.5 bg-white px-1 text-sm text-gray-600 transition-all peer-placeholder-shown:top-3.5 peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-400 peer-focus:-top-2.5 peer-focus:text-sm peer-focus:text-blue-500"
-              >
-                Confirmar senha
-              </label>
             </div>
           </div>
 
           <div>
             <button
               type="submit"
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              disabled={loading}
+              className={`group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white ${
+                loading
+                  ? 'bg-blue-400 cursor-not-allowed'
+                  : 'bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'
+              }`}
             >
-              Criar conta
+              {loading ? 'Criando conta...' : 'Criar conta'}
             </button>
           </div>
         </form>

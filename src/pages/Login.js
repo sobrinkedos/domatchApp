@@ -8,18 +8,26 @@ function Login() {
     password: ''
   });
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setLoading(true);
 
-    const success = login(formData);
-    if (success) {
-      navigate('/');
-    } else {
-      setError('Email ou senha incorretos');
+    try {
+      const success = await login(formData);
+      if (success) {
+        navigate('/');
+      } else {
+        setError('Email ou senha incorretos');
+      }
+    } catch (error) {
+      setError('Ocorreu um erro ao fazer login');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -53,19 +61,13 @@ function Login() {
                 name="email"
                 type="email"
                 required
-                className="peer w-full px-4 py-3 border-2 border-gray-200 rounded-lg outline-none transition-all focus:border-blue-500 placeholder-transparent"
+                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
                 placeholder="Email"
                 value={formData.email}
                 onChange={(e) =>
                   setFormData({ ...formData, email: e.target.value })
                 }
               />
-              <label
-                htmlFor="email"
-                className="absolute left-4 -top-2.5 bg-white px-1 text-sm text-gray-600 transition-all peer-placeholder-shown:top-3.5 peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-400 peer-focus:-top-2.5 peer-focus:text-sm peer-focus:text-blue-500"
-              >
-                Email
-              </label>
             </div>
             <div className="relative">
               <input
@@ -73,28 +75,27 @@ function Login() {
                 name="password"
                 type="password"
                 required
-                className="peer w-full px-4 py-3 border-2 border-gray-200 rounded-lg outline-none transition-all focus:border-blue-500 placeholder-transparent"
+                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
                 placeholder="Senha"
                 value={formData.password}
                 onChange={(e) =>
                   setFormData({ ...formData, password: e.target.value })
                 }
               />
-              <label
-                htmlFor="password"
-                className="absolute left-4 -top-2.5 bg-white px-1 text-sm text-gray-600 transition-all peer-placeholder-shown:top-3.5 peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-400 peer-focus:-top-2.5 peer-focus:text-sm peer-focus:text-blue-500"
-              >
-                Senha
-              </label>
             </div>
           </div>
 
           <div>
             <button
               type="submit"
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              disabled={loading}
+              className={`group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white ${
+                loading
+                  ? 'bg-blue-400 cursor-not-allowed'
+                  : 'bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'
+              }`}
             >
-              Entrar
+              {loading ? 'Entrando...' : 'Entrar'}
             </button>
           </div>
         </form>

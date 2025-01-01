@@ -1,64 +1,74 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { supabase } from '../config/supabase';
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(() => {
-    const savedUser = localStorage.getItem('user');
-    return savedUser ? JSON.parse(savedUser) : null;
-  });
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (user) {
-      localStorage.setItem('user', JSON.stringify(user));
-    } else {
-      localStorage.removeItem('user');
-    }
-  }, [user]);
+    // Verificar sessão atual
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
 
-  const login = (userData) => {
-    // Aqui você pode adicionar validação de login
-    const users = JSON.parse(localStorage.getItem('users') || '[]');
-    const foundUser = users.find(u => 
-      u.email === userData.email && u.password === userData.password
-    );
-    
-    if (foundUser) {
-      const { password, ...userWithoutPassword } = foundUser;
-      setUser(userWithoutPassword);
+    // Escutar mudanças de autenticação
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const login = async (userData) => {
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: userData.email,
+        password: userData.password,
+      });
+
+      if (error) throw error;
       return true;
-    }
-    return false;
-  };
-
-  const register = (userData) => {
-    const users = JSON.parse(localStorage.getItem('users') || '[]');
-    
-    // Verificar se o email já existe
-    if (users.some(u => u.email === userData.email)) {
+    } catch (error) {
+      console.error('Erro no login:', error.message);
       return false;
     }
-
-    // Adicionar novo usuário
-    const newUser = {
-      id: Date.now(),
-      ...userData,
-    };
-    users.push(newUser);
-    localStorage.setItem('users', JSON.stringify(users));
-
-    // Login automático após registro
-    const { password, ...userWithoutPassword } = newUser;
-    setUser(userWithoutPassword);
-    return true;
   };
 
-  const logout = () => {
-    setUser(null);
+  const register = async (userData) => {
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email: userData.email,
+        password: userData.password,
+        options: {
+          data: {
+            name: userData.name,
+            phone: userData.phone,
+          },
+        },
+      });
+
+      if (error) throw error;
+      return true;
+    } catch (error) {
+      console.error('Erro no registro:', error.message);
+      return false;
+    }
+  };
+
+  const logout = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+    } catch (error) {
+      console.error('Erro no logout:', error.message);
+    }
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout }}>
+    <AuthContext.Provider value={{ user, login, register, logout, loading }}>
       {children}
     </AuthContext.Provider>
   );
