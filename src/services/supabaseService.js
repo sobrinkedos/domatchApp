@@ -61,13 +61,24 @@ export const createCompetition = async (competitionData) => {
   try {
     const { data: { user } } = await supabase.auth.getUser();
     
+    const newCompetition = {
+      name: competitionData.name,
+      description: competitionData.description,
+      start_date: competitionData.start_date,
+      user_id: user.id,
+      status: 'pending'
+    };
+    
+    console.log('Creating competition with data:', newCompetition);
+    
     const { data, error } = await supabase
       .from('competitions')
-      .insert([{ ...competitionData, user_id: user.id }])
+      .insert([newCompetition])
       .select()
       .single();
     
     if (error) throw error;
+    console.log('Created competition:', data);
     return data;
   } catch (err) {
     console.error('Error in createCompetition:', err);
@@ -121,6 +132,7 @@ export const getCompetitionById = async (id) => {
       .single();
 
     if (error) throw error;
+    console.log('Fetched competition by ID:', data);
     return data;
   } catch (error) {
     console.error('Error fetching competition:', error);
@@ -281,6 +293,28 @@ export const removePlayerFromCompetition = async (competitionId, playerId) => {
   } catch (error) {
     console.error('Error removing player from competition:', error);
     return false;
+  }
+};
+
+export const startCompetition = async (competitionId) => {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    const { data, error } = await supabase
+      .from('competitions')
+      .update({ 
+        status: 'in_progress',
+        start_date: new Date().toISOString()
+      })
+      .eq('id', competitionId)
+      .eq('user_id', user.id) // Garantir que apenas o dono pode iniciar
+      .select();
+
+    if (error) throw error;
+    return data[0];
+  } catch (error) {
+    console.error('Error starting competition:', error);
+    throw error;
   }
 };
 

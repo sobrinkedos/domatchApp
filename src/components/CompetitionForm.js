@@ -8,8 +8,7 @@ function CompetitionForm({ competition, onSubmit, onCancel }) {
   const [formData, setFormData] = useState({
     name: competition?.name || '',
     description: competition?.description || '',
-    start_date: competition?.start_date || new Date().toISOString().split('T')[0],
-    status: competition?.status || null
+    start_date: competition?.start_date || new Date().toISOString().split('T')[0]
   });
 
   useEffect(() => {
@@ -37,8 +36,7 @@ function CompetitionForm({ competition, onSubmit, onCancel }) {
       ...formData,
       name: formData.name.trim(),
       description: formData.description.trim(),
-      start_date: formData.start_date,
-      status: formData.status
+      start_date: formData.start_date
     };
 
     onSubmit(newCompetition);

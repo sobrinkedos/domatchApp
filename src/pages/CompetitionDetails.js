@@ -16,9 +16,10 @@ import {
   TrashIcon,
   CalendarIcon,
   UsersIcon,
-  RectangleStackIcon
+  RectangleStackIcon,
+  PlayIcon
 } from '@heroicons/react/24/outline';
-import { getCompetitionById, getGamesByCompetitionId, getPlayersByCompetitionId } from '../services/supabaseService';
+import { getCompetitionById, getGamesByCompetitionId, getPlayersByCompetitionId, startCompetition } from '../services/supabaseService';
 
 function CompetitionDetails() {
   const { id } = useParams();
@@ -32,6 +33,7 @@ function CompetitionDetails() {
   const [showChampionsModal, setShowChampionsModal] = useState(false);
   const [showPlayersModal, setShowPlayersModal] = useState(false);
   const [selectedGame, setSelectedGame] = useState(null);
+  const [processing, setProcessing] = useState(false);
 
   useEffect(() => {
     loadCompetitionData();
@@ -46,6 +48,7 @@ function CompetitionDetails() {
       if (!competitionData) {
         throw new Error('Competição não encontrada');
       }
+      console.log('Competition Data:', competitionData); // Debug
       setCompetition(competitionData);
 
       // Carregar jogos da competição
@@ -54,6 +57,7 @@ function CompetitionDetails() {
 
       // Carregar jogadores da competição
       const playersData = await getPlayersByCompetitionId(id);
+      console.log('Players Data:', playersData); // Debug
       setPlayers(playersData);
 
       setError(null);
@@ -94,6 +98,19 @@ function CompetitionDetails() {
   const formatDate = (dateString) => {
     const options = { day: '2-digit', month: '2-digit', year: 'numeric' };
     return new Date(dateString).toLocaleDateString('pt-BR', options);
+  };
+
+  const handleStartCompetition = async () => {
+    try {
+      setProcessing(true);
+      await startCompetition(id);
+      await loadCompetitionData();
+    } catch (error) {
+      console.error('Error starting competition:', error);
+      // TODO: Adicionar toast de erro
+    } finally {
+      setProcessing(false);
+    }
   };
 
   if (loading) {
@@ -148,13 +165,6 @@ function CompetitionDetails() {
             <ChartBarIcon className="h-5 w-5 mr-2" />
             Estatísticas
           </button>
-          <button
-            onClick={() => setShowPlayersModal(true)}
-            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-          >
-            <UsersIcon className="h-5 w-5 mr-2" />
-            Gerenciar Jogadores
-          </button>
         </div>
       </div>
 
@@ -170,13 +180,19 @@ function CompetitionDetails() {
                 Informações e estatísticas
               </p>
             </div>
-            <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-              competition.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-              competition.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
-              'bg-green-100 text-green-800'
-            }`}>
-              {getStatusText(competition.status)}
-            </span>
+            <div className="flex items-center space-x-4">
+              <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                competition.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                competition.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
+                'bg-green-100 text-green-800'
+              }`}>
+                {getStatusText(competition.status)}
+              </span>
+              {console.log('Rendering button section')}
+              {console.log('Competition:', competition)}
+              {console.log('Status:', competition.status)}
+              {console.log('Players:', players)}
+            </div>
           </div>
         </div>
         <div className="border-t border-gray-200">
@@ -208,6 +224,20 @@ function CompetitionDetails() {
           </dl>
         </div>
       </div>
+
+      {competition.status === 'pending' && (
+        <div className="mt-4">
+          <button
+            onClick={handleStartCompetition}
+            disabled={players.length < 4 || processing}
+            title={players.length < 4 ? 'Mínimo de 4 jogadores necessários' : ''}
+            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+          >
+            <PlayIcon className="h-5 w-5 mr-2" />
+            {processing ? 'Iniciando...' : 'Iniciar Competição'}
+          </button>
+        </div>
+      )}
 
       {/* Lista de Jogos */}
       <div className="bg-white shadow overflow-hidden sm:rounded-lg">
@@ -256,9 +286,18 @@ function CompetitionDetails() {
       {/* Lista de Jogadores */}
       <div className="bg-white shadow overflow-hidden sm:rounded-lg">
         <div className="px-4 py-5 sm:px-6">
-          <h3 className="text-lg leading-6 font-medium text-gray-900">
-            Jogadores
-          </h3>
+          <div className="flex justify-between items-center">
+            <h3 className="text-lg leading-6 font-medium text-gray-900">
+              Jogadores
+            </h3>
+            <button
+              onClick={() => setShowPlayersModal(true)}
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            >
+              <UsersIcon className="h-5 w-5 mr-2" />
+              Gerenciar Jogadores
+            </button>
+          </div>
         </div>
         <div className="border-t border-gray-200">
           <ul className="divide-y divide-gray-200">

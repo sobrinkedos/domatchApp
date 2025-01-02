@@ -19,7 +19,7 @@ create table public.competitions (
     user_id uuid references auth.users not null,
     name text not null,
     description text,
-    status text default 'active' check (status in ('active', 'finished', 'cancelled')),
+    status text default 'pending' check (status in ('pending', 'in_progress', 'finished')),
     start_date timestamp with time zone default now()
 );
 
