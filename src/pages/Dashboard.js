@@ -42,17 +42,23 @@ function Dashboard() {
     const loadData = async () => {
       try {
         setLoading(true);
-        const [loadedPlayers, loadedGames, loadedCompetitions] = await Promise.all([
+        const [loadedPlayers, loadedCompetitions] = await Promise.all([
           getPlayers(),
-          getGames(),
           getCompetitions()
         ]);
 
         setPlayers(loadedPlayers);
-        setGames(loadedGames);
         setCompetitions(loadedCompetitions);
 
-        const stats = calculateGlobalStats(loadedPlayers, loadedGames);
+        // Carrega jogos de todas as competições
+        const allGames = [];
+        for (const competition of loadedCompetitions) {
+          const competitionGames = await getGames(competition.id);
+          allGames.push(...competitionGames);
+        }
+        setGames(allGames);
+
+        const stats = calculateGlobalStats(loadedPlayers, allGames);
         setGlobalStats(stats);
       } catch (err) {
         console.error('Erro ao carregar dados:', err);

@@ -10,6 +10,7 @@ import Statistics from './pages/Statistics';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import GameDetails from './pages/GameDetails';
+import Games from './pages/Games';
 import Dashboard from './pages/Dashboard';
 
 function PrivateRoute({ children }) {
@@ -46,8 +47,12 @@ function AppContent() {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const { user, logout } = useAuth();
 
-  const toggleDrawer = () => {
-    setIsDrawerOpen(!isDrawerOpen);
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch (error) {
+      console.error('Error logging out:', error);
+    }
   };
 
   // Não mostrar drawer nas páginas de login e registro
@@ -66,7 +71,7 @@ function AppContent() {
       {isDrawerOpen && (
         <div 
           className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
-          onClick={toggleDrawer}
+          onClick={() => setIsDrawerOpen(false)}
         ></div>
       )}
 
@@ -77,7 +82,7 @@ function AppContent() {
             <img src="/logo.svg" alt="Domatch" className="h-8 w-8 mr-2" />
             <span className="text-xl font-bold text-gray-900">Domatch</span>
           </div>
-          <button onClick={toggleDrawer} className="text-gray-600 hover:text-gray-900">
+          <button onClick={() => setIsDrawerOpen(false)} className="text-gray-600 hover:text-gray-900">
             <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -85,14 +90,14 @@ function AppContent() {
         </div>
         <div className="p-6">
           <div className="flex flex-col space-y-4">
-            <Link to="/dashboard" onClick={toggleDrawer} className="text-gray-600 hover:text-gray-900">Dashboard</Link>
-            <Link to="/competitions" onClick={toggleDrawer} className="text-gray-600 hover:text-gray-900">Competições</Link>
-            <Link to="/players" onClick={toggleDrawer} className="text-gray-600 hover:text-gray-900">Jogadores</Link>
-            <Link to="/statistics" onClick={toggleDrawer} className="text-gray-600 hover:text-gray-900">Estatísticas</Link>
+            <Link to="/dashboard" onClick={() => setIsDrawerOpen(false)} className="text-gray-600 hover:text-gray-900">Dashboard</Link>
+            <Link to="/competitions" onClick={() => setIsDrawerOpen(false)} className="text-gray-600 hover:text-gray-900">Competições</Link>
+            <Link to="/players" onClick={() => setIsDrawerOpen(false)} className="text-gray-600 hover:text-gray-900">Jogadores</Link>
+            <Link to="/statistics" onClick={() => setIsDrawerOpen(false)} className="text-gray-600 hover:text-gray-900">Estatísticas</Link>
             <button
               onClick={() => {
-                logout();
-                toggleDrawer();
+                handleLogout();
+                setIsDrawerOpen(false);
               }}
               className="text-gray-600 hover:text-gray-900 text-left"
             >
@@ -108,7 +113,7 @@ function AppContent() {
           <div className="flex justify-between items-center h-16">
             {/* Logo e botão do menu */}
             <div className="flex items-center">
-              <button onClick={toggleDrawer} className="md:hidden p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 focus:outline-none">
+              <button onClick={() => setIsDrawerOpen(!isDrawerOpen)} className="md:hidden p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 focus:outline-none">
                 <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                 </svg>
@@ -131,7 +136,7 @@ function AppContent() {
             <div className="hidden md:flex items-center space-x-4">
               <span className="text-gray-600">{user?.name}</span>
               <button
-                onClick={logout}
+                onClick={handleLogout}
                 className="text-gray-600 hover:text-gray-900 px-3 py-2"
               >
                 Sair
@@ -177,6 +182,14 @@ function AppContent() {
               element={
                 <PrivateRoute>
                   <CompetitionStats />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/competitions/:competitionId/games"
+              element={
+                <PrivateRoute>
+                  <Games />
                 </PrivateRoute>
               }
             />

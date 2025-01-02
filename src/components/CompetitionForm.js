@@ -1,44 +1,56 @@
 import React, { useState, useEffect } from 'react';
+import { getPlayers } from '../services/supabaseService';
 
 function CompetitionForm({ competition, onSubmit, onCancel }) {
   const [players, setPlayers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [formData, setFormData] = useState({
     name: competition?.name || '',
-    date: competition?.date || new Date().toISOString().split('T')[0],
-    status: null,
-    players: competition?.players || []
+    description: competition?.description || '',
+    start_date: competition?.start_date || new Date().toISOString().split('T')[0],
+    status: competition?.status || null
   });
 
   useEffect(() => {
-    // Carregar jogadores do localStorage
-    const savedPlayers = JSON.parse(localStorage.getItem('players') || '[]');
-    setPlayers(savedPlayers);
+    loadPlayers();
   }, []);
+
+  const loadPlayers = async () => {
+    try {
+      setLoading(true);
+      const data = await getPlayers();
+      setPlayers(data);
+      setError(null);
+    } catch (err) {
+      console.error('Error loading players:', err);
+      setError('Erro ao carregar jogadores');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
     
     const newCompetition = {
-      id: competition?.id || Date.now(),
+      ...formData,
       name: formData.name.trim(),
-      description: '',
-      date: formData.date,
-      players: formData.players,
-      status: null,
-      createdAt: Date.now()
+      description: formData.description.trim(),
+      start_date: formData.start_date,
+      status: formData.status
     };
 
     onSubmit(newCompetition);
   };
 
-  const handlePlayerToggle = (playerId) => {
-    setFormData(prev => ({
-      ...prev,
-      players: prev.players.includes(playerId)
-        ? prev.players.filter(id => id !== playerId)
-        : [...prev.players, playerId]
-    }));
-  };
+  if (loading) {
+    return <div>Carregando...</div>;
+  }
+
+  if (error) {
+    return <div className="text-red-500">{error}</div>;
+  }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -49,47 +61,38 @@ function CompetitionForm({ competition, onSubmit, onCancel }) {
         <input
           type="text"
           id="name"
+          required
           value={formData.name}
           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-          required
+          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
         />
       </div>
 
       <div>
-        <label htmlFor="date" className="block text-sm font-medium text-gray-700">
-          Data
+        <label htmlFor="description" className="block text-sm font-medium text-gray-700">
+          Descrição
+        </label>
+        <textarea
+          id="description"
+          value={formData.description}
+          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+          rows={3}
+        />
+      </div>
+
+      <div>
+        <label htmlFor="start_date" className="block text-sm font-medium text-gray-700">
+          Data de Início
         </label>
         <input
           type="date"
-          id="date"
-          value={formData.date}
-          onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+          id="start_date"
           required
+          value={formData.start_date}
+          onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
+          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
         />
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Jogadores Participantes
-        </label>
-        <div className="space-y-2 max-h-48 overflow-y-auto border rounded-md p-2">
-          {players.map((player) => (
-            <label key={player.id} className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                checked={formData.players.includes(player.id)}
-                onChange={() => handlePlayerToggle(player.id)}
-                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-              />
-              <span>{player.name} {player.nickname ? `(${player.nickname})` : ''}</span>
-            </label>
-          ))}
-          {players.length === 0 && (
-            <p className="text-gray-500 text-sm">Nenhum jogador cadastrado</p>
-          )}
-        </div>
       </div>
 
       <div className="flex justify-end space-x-3 pt-4">
@@ -104,7 +107,7 @@ function CompetitionForm({ competition, onSubmit, onCancel }) {
           type="submit"
           className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
         >
-          Salvar
+          {competition ? 'Salvar' : 'Criar'}
         </button>
       </div>
     </form>
