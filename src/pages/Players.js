@@ -1,36 +1,46 @@
 import React, { useState, useEffect } from 'react';
+import { getPlayers, createPlayer } from '../services/supabaseService';
 import PlayerModal from '../components/PlayerModal';
 import { PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
 
 function Players() {
-  const [players, setPlayers] = useState(() => {
-    const savedPlayers = localStorage.getItem('players');
-    const parsedPlayers = savedPlayers ? JSON.parse(savedPlayers) : [];
-    // Adiciona o campo active para jogadores existentes se não existir
-    return parsedPlayers.map(player => ({
-      ...player,
-      active: player.active === undefined ? true : player.active
-    }));
-  });
+  const [players, setPlayers] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedPlayer, setSelectedPlayer] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const loadPlayers = async () => {
+    try {
+      setLoading(true);
+      const loadedPlayers = await getPlayers();
+      setPlayers(loadedPlayers);
+    } catch (err) {
+      console.error('Erro ao carregar jogadores:', err);
+      setError('Erro ao carregar os dados dos jogadores');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    localStorage.setItem('players', JSON.stringify(players));
-  }, [players]);
+    loadPlayers();
+  }, []);
 
-  const handleAddPlayer = (playerData) => {
-    const newPlayer = {
-      id: Date.now(),
-      ...playerData,
-      active: true
-    };
-    setPlayers([...players, newPlayer]);
+  const handleAddPlayer = async (playerData) => {
+    try {
+      const newPlayer = await createPlayer(playerData);
+      setPlayers([...players, newPlayer]);
+      setIsModalOpen(false);
+    } catch (err) {
+      console.error('Erro ao adicionar jogador:', err);
+      setError('Erro ao adicionar jogador');
+    }
   };
 
   const handleEditPlayer = (playerData) => {
     setPlayers(players.map(p => 
-      p.id === selectedPlayer.id ? { ...p, ...playerData, active: p.active } : p
+      p.id === selectedPlayer.id ? { ...p, ...playerData } : p
     ));
   };
 
@@ -68,66 +78,71 @@ function Players() {
     setIsModalOpen(false);
   };
 
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900">Jogadores</h1>
+    <div className="container mx-auto px-4 py-8">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">Jogadores</h1>
         <button
-          onClick={() => setIsModalOpen(true)}
-          className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+          onClick={() => {
+            setSelectedPlayer(null);
+            setIsModalOpen(true);
+          }}
+          className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
         >
-          Novo Jogador
+          Adicionar Jogador
         </button>
       </div>
 
-      {/* Lista de Jogadores */}
-      <div className="bg-white shadow overflow-hidden sm:rounded-md">
-        <ul className="divide-y divide-gray-200">
-          {players.map((player) => (
-            <li key={player.id} className={`px-6 py-4 hover:bg-gray-50 ${!player.active ? 'opacity-50' : ''}`}>
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="flex items-center">
-                    <h3 className="text-lg font-medium text-gray-900">{player.name}</h3>
-                    {!player.active && (
-                      <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
-                        Inativo
-                      </span>
-                    )}
-                  </div>
-                  <div className="mt-1 text-sm text-gray-500">
-                    <p>Apelido: {player.nickname || '-'}</p>
-                    <p>Celular: {player.phone || '-'}</p>
-                  </div>
-                </div>
-                <div className="flex space-x-3">
-                  <button
-                    onClick={() => openEditModal(player)}
-                    className="text-blue-600 hover:text-blue-900"
-                  >
-                    <PencilIcon className="h-5 w-5" />
-                  </button>
-                  <button
-                    onClick={() => handleDeletePlayer(player.id)}
-                    className="text-red-600 hover:text-red-900"
-                  >
-                    <TrashIcon className="h-5 w-5" />
-                  </button>
-                </div>
-              </div>
-            </li>
-          ))}
-          {players.length === 0 && (
-            <li className="px-6 py-4 text-center text-gray-500">
-              Nenhum jogador cadastrado
-            </li>
-          )}
-        </ul>
+      {error && (
+        <div className="mb-4 p-4 bg-red-100 text-red-700 rounded-md">
+          {error}
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {players.map((player) => (
+          <div
+            key={player.id}
+            className="bg-white rounded-lg shadow-md p-4 flex justify-between items-start"
+          >
+            <div>
+              <h2 className="text-xl font-semibold">{player.name}</h2>
+              {player.phone && (
+                <p className="text-gray-600">{player.phone}</p>
+              )}
+            </div>
+            <div className="flex space-x-2">
+              <button
+                onClick={() => {
+                  setSelectedPlayer(player);
+                  setIsModalOpen(true);
+                }}
+                className="text-blue-600 hover:text-blue-800"
+              >
+                <PencilIcon className="h-5 w-5" />
+              </button>
+              <button
+                onClick={() => handleDeletePlayer(player.id)}
+                className="text-red-600 hover:text-red-900"
+              >
+                <TrashIcon className="h-5 w-5" />
+              </button>
+            </div>
+          </div>
+        ))}
       </div>
 
       <PlayerModal
         isOpen={isModalOpen}
-        onClose={closeModal}
+        onClose={() => setIsModalOpen(false)}
         player={selectedPlayer}
         onSubmit={selectedPlayer ? handleEditPlayer : handleAddPlayer}
       />

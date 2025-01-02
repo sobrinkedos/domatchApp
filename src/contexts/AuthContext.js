@@ -6,6 +6,7 @@ const AuthContext = createContext(null);
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     // Verificar sessão atual
@@ -22,54 +23,62 @@ export function AuthProvider({ children }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  const login = async (userData) => {
+  const login = async (email, password) => {
     try {
+      setError(null);
       const { data, error } = await supabase.auth.signInWithPassword({
-        email: userData.email,
-        password: userData.password,
+        email,
+        password,
       });
 
       if (error) throw error;
-      return true;
-    } catch (error) {
-      console.error('Erro no login:', error.message);
-      return false;
+      return data;
+    } catch (err) {
+      setError(err.message);
+      throw err;
     }
   };
 
-  const register = async (userData) => {
+  const register = async (email, password, phone) => {
     try {
+      setError(null);
       const { data, error } = await supabase.auth.signUp({
-        email: userData.email,
-        password: userData.password,
-        options: {
-          data: {
-            name: userData.name,
-            phone: userData.phone,
-          },
-        },
+        email,
+        password,
+        phone,
       });
 
       if (error) throw error;
-      return true;
-    } catch (error) {
-      console.error('Erro no registro:', error.message);
-      return false;
+      return data;
+    } catch (err) {
+      setError(err.message);
+      throw err;
     }
   };
 
   const logout = async () => {
     try {
+      setError(null);
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
-    } catch (error) {
-      console.error('Erro no logout:', error.message);
+    } catch (err) {
+      setError(err.message);
+      throw err;
     }
   };
 
+  const value = {
+    user,
+    loading,
+    error,
+    login,
+    register,
+    logout,
+  };
+
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, loading }}>
-      {children}
+    <AuthContext.Provider value={value}>
+      {!loading && children}
     </AuthContext.Provider>
   );
 }

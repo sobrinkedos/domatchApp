@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
 
-function PlayerForm({ onSubmit, onCancel, initialData }) {
-  const [name, setName] = useState(initialData?.name || '');
-  const [nickname, setNickname] = useState(initialData?.nickname || '');
-  const [phone, setPhone] = useState(initialData?.phone || '');
+function PlayerForm({ player, onSubmit, onCancel }) {
+  const [name, setName] = useState(player?.name || '');
+  const [phone, setPhone] = useState(player?.phone || '');
 
   const formatPhoneNumber = (value) => {
     // Remove tudo que não for número
@@ -23,28 +22,16 @@ function PlayerForm({ onSubmit, onCancel, initialData }) {
     return value;
   };
 
-  const handlePhoneChange = (e) => {
-    const value = e.target.value;
-    const numbers = value.replace(/\D/g, '');
-    if (numbers.length <= 11) {
-      setPhone(formatPhoneNumber(value));
-    }
-  };
-
   const handleSubmit = (e) => {
     e.preventDefault();
-    // Remove a formatação do telefone antes de salvar
-    const cleanPhone = phone.replace(/\D/g, '');
     onSubmit({
-      id: initialData?.id || Date.now(),
-      name,
-      nickname,
-      phone: cleanPhone
+      name: name.trim(),
+      phone: phone.trim() || null
     });
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-4">
       <div>
         <label htmlFor="name" className="block text-sm font-medium text-gray-700">
           Nome
@@ -52,23 +39,10 @@ function PlayerForm({ onSubmit, onCancel, initialData }) {
         <input
           type="text"
           id="name"
+          required
           value={name}
           onChange={(e) => setName(e.target.value)}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-          required
-        />
-      </div>
-
-      <div>
-        <label htmlFor="nickname" className="block text-sm font-medium text-gray-700">
-          Apelido
-        </label>
-        <input
-          type="text"
-          id="nickname"
-          value={nickname}
-          onChange={(e) => setNickname(e.target.value)}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
         />
       </div>
 
@@ -80,13 +54,10 @@ function PlayerForm({ onSubmit, onCancel, initialData }) {
           type="tel"
           id="phone"
           value={phone}
-          onChange={handlePhoneChange}
+          onChange={(e) => setPhone(formatPhoneNumber(e.target.value))}
+          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
           placeholder="(00) 00000-0000"
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
         />
-        <p className="mt-1 text-sm text-gray-500">
-          Formato: (00) 00000-0000
-        </p>
       </div>
 
       <div className="flex justify-end space-x-3">
@@ -101,7 +72,7 @@ function PlayerForm({ onSubmit, onCancel, initialData }) {
           type="submit"
           className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
         >
-          Salvar
+          {player ? 'Salvar' : 'Adicionar'}
         </button>
       </div>
     </form>

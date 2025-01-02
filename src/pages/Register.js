@@ -3,45 +3,35 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
 function Register() {
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
-    phone: ''
-  });
-  const [error, setError] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
-  const { register } = useAuth();
+  const [validationError, setValidationError] = useState('');
+  const { register, error: authError } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
-    setLoading(true);
+    setValidationError('');
+
+    if (password !== confirmPassword) {
+      setValidationError('As senhas não coincidem');
+      return;
+    }
+
+    if (password.length < 6) {
+      setValidationError('A senha deve ter pelo menos 6 caracteres');
+      return;
+    }
 
     try {
-      // Validações
-      if (formData.password !== formData.confirmPassword) {
-        setError('As senhas não coincidem');
-        return;
-      }
-
-      if (formData.password.length < 6) {
-        setError('A senha deve ter pelo menos 6 caracteres');
-        return;
-      }
-
-      const { confirmPassword, ...userData } = formData;
-      const success = await register(userData);
-      
-      if (success) {
-        navigate('/');
-      } else {
-        setError('Erro ao criar conta. Este email pode já estar em uso.');
-      }
-    } catch (error) {
-      setError('Ocorreu um erro ao criar a conta');
+      setLoading(true);
+      await register(email, password, phone);
+      navigate('/');
+    } catch (err) {
+      console.error('Erro no registro:', err.message);
     } finally {
       setLoading(false);
     }
@@ -64,81 +54,78 @@ function Register() {
             </Link>
           </p>
         </div>
+
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          {error && (
+          {(authError || validationError) && (
             <div className="rounded-md bg-red-50 p-4">
-              <div className="text-sm text-red-700">{error}</div>
+              <div className="text-sm text-red-700">
+                {validationError || authError}
+              </div>
             </div>
           )}
-          <div className="space-y-6">
-            <div className="relative">
-              <input
-                id="name"
-                name="name"
-                type="text"
-                required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                placeholder="Nome completo"
-                value={formData.name}
-                onChange={(e) =>
-                  setFormData({ ...formData, name: e.target.value })
-                }
-              />
-            </div>
-            <div className="relative">
+
+          <div className="rounded-md shadow-sm -space-y-px">
+            <div>
+              <label htmlFor="email" className="sr-only">
+                Email
+              </label>
               <input
                 id="email"
                 name="email"
                 type="email"
+                autoComplete="email"
                 required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
                 placeholder="Email"
-                value={formData.email}
-                onChange={(e) =>
-                  setFormData({ ...formData, email: e.target.value })
-                }
               />
             </div>
-            <div className="relative">
+            <div>
+              <label htmlFor="phone" className="sr-only">
+                Telefone
+              </label>
               <input
                 id="phone"
                 name="phone"
                 type="tel"
-                required
+                autoComplete="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
                 className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                placeholder="Telefone"
-                value={formData.phone}
-                onChange={(e) =>
-                  setFormData({ ...formData, phone: e.target.value })
-                }
+                placeholder="Telefone (opcional)"
               />
             </div>
-            <div className="relative">
+            <div>
+              <label htmlFor="password" className="sr-only">
+                Senha
+              </label>
               <input
                 id="password"
                 name="password"
                 type="password"
+                autoComplete="new-password"
                 required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
                 placeholder="Senha"
-                value={formData.password}
-                onChange={(e) =>
-                  setFormData({ ...formData, password: e.target.value })
-                }
               />
             </div>
-            <div className="relative">
+            <div>
+              <label htmlFor="confirmPassword" className="sr-only">
+                Confirme a Senha
+              </label>
               <input
                 id="confirmPassword"
                 name="confirmPassword"
                 type="password"
+                autoComplete="new-password"
                 required
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
                 className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
                 placeholder="Confirme a senha"
-                value={formData.confirmPassword}
-                onChange={(e) =>
-                  setFormData({ ...formData, confirmPassword: e.target.value })
-                }
               />
             </div>
           </div>
@@ -147,13 +134,13 @@ function Register() {
             <button
               type="submit"
               disabled={loading}
-              className={`group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white ${
-                loading
-                  ? 'bg-blue-400 cursor-not-allowed'
-                  : 'bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'
-              }`}
+              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-blue-300 disabled:cursor-not-allowed"
             >
-              {loading ? 'Criando conta...' : 'Criar conta'}
+              {loading ? (
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+              ) : (
+                'Criar conta'
+              )}
             </button>
           </div>
         </form>
