@@ -249,17 +249,27 @@ export const updateCompetitionStatus = async (id, status) => {
 
 export const createGame = async (gameData) => {
   try {
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    const newGame = {
+      ...gameData,
+      user_id: user.id
+    };
+    
+    console.log('Creating game with data:', newGame);
+    
     const { data, error } = await supabase
       .from('games')
-      .insert([gameData])
+      .insert([newGame])
       .select()
       .single();
 
     if (error) throw error;
+    console.log('Created game:', data);
     return data;
   } catch (error) {
     console.error('Error creating game:', error);
-    return null;
+    throw error;
   }
 };
 
@@ -344,27 +354,56 @@ export const getGames = async (competitionId) => {
   }
 };
 
-export const updateGameStatus = async (gameId, status, winner_team = null, team1_score = null, team2_score = null) => {
+export async function updateGameStatus(gameId, status, winnerTeam, team1Score, team2Score, matches) {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    const updates = { status };
-    if (winner_team !== null) updates.winner_team = winner_team;
-    if (team1_score !== null) updates.team1_score = team1_score;
-    if (team2_score !== null) updates.team2_score = team2_score;
-    
     const { data, error } = await supabase
       .from('games')
-      .update(updates)
+      .update({
+        status,
+        winner_team: winnerTeam,
+        team1_score: team1Score,
+        team2_score: team2Score,
+        matches
+      })
       .eq('id', gameId)
-      .eq('user_id', user.id)
-      .select()
-      .single();
-    
+      .select();
+
     if (error) throw error;
     return data;
-  } catch (err) {
-    console.error('Error in updateGameStatus:', err);
-    throw err;
+  } catch (error) {
+    console.error('Erro ao atualizar status do jogo:', error);
+    throw error;
+  }
+}
+
+export const getGameById = async (id) => {
+  try {
+    const { data, error } = await supabase
+      .from('games')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('Error getting game:', error);
+    return null;
+  }
+};
+
+export const getPlayerById = async (id) => {
+  try {
+    const { data, error } = await supabase
+      .from('players')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('Error getting player:', error);
+    return null;
   }
 };

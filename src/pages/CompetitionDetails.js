@@ -19,7 +19,13 @@ import {
   RectangleStackIcon,
   PlayIcon
 } from '@heroicons/react/24/outline';
-import { getCompetitionById, getGamesByCompetitionId, getPlayersByCompetitionId, startCompetition } from '../services/supabaseService';
+import { 
+  getCompetitionById, 
+  getGamesByCompetitionId, 
+  getPlayersByCompetitionId, 
+  startCompetition,
+  createGame 
+} from '../services/supabaseService';
 
 function CompetitionDetails() {
   const { id } = useParams();
@@ -107,6 +113,19 @@ function CompetitionDetails() {
       await loadCompetitionData();
     } catch (error) {
       console.error('Error starting competition:', error);
+      // TODO: Adicionar toast de erro
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handleCreateGame = async (gameData) => {
+    try {
+      setProcessing(true);
+      await createGame(gameData);
+      await loadCompetitionData();
+    } catch (error) {
+      console.error('Error creating game:', error);
       // TODO: Adicionar toast de erro
     } finally {
       setProcessing(false);
@@ -242,44 +261,84 @@ function CompetitionDetails() {
       {/* Lista de Jogos */}
       <div className="bg-white shadow overflow-hidden sm:rounded-lg">
         <div className="px-4 py-5 sm:px-6">
-          <h3 className="text-lg leading-6 font-medium text-gray-900">
-            Últimos Jogos
-          </h3>
+          <div className="flex justify-between items-center">
+            <div>
+              <h3 className="text-lg leading-6 font-medium text-gray-900">
+                Jogos em Andamento
+              </h3>
+              <p className="mt-1 max-w-2xl text-sm text-gray-500">
+                {games.length === 0 ? 'Nenhum jogo criado ainda' : `${games.length} jogos criados`}
+              </p>
+            </div>
+            {competition.status === 'in_progress' && (
+              <button
+                onClick={() => setShowGameModal(true)}
+                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                <RectangleStackIcon className="h-5 w-5 mr-2" />
+                Novo Jogo
+              </button>
+            )}
+          </div>
         </div>
+
         <div className="border-t border-gray-200">
-          <ul className="divide-y divide-gray-200">
-            {games.slice(0, 5).map((game) => (
-              <li key={game.id} className="px-4 py-4 sm:px-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div className={`w-2 h-2 rounded-full ${
-                      game.status === 'pending' ? 'bg-yellow-400' :
-                      game.status === 'in_progress' ? 'bg-blue-400' :
-                      'bg-green-400'
-                    }`} />
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">
-                        {game.team1_name} vs {game.team2_name}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        {formatDate(game.date)}
-                      </p>
+          {games.length > 0 ? (
+            <ul className="divide-y divide-gray-200">
+              {games.map((game) => (
+                <li key={game.id} className="px-4 py-4 sm:px-6 hover:bg-gray-50">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0">
+                        <ClockIcon className={`h-5 w-5 ${
+                          game.status === 'pending' ? 'text-yellow-500' :
+                          game.status === 'in_progress' ? 'text-blue-500' :
+                          'text-green-500'
+                        }`} />
+                      </div>
+                      <div className="ml-4">
+                        <div className="text-sm font-medium text-gray-900">
+                          {game.team1_player1?.name} {game.team1_player2 && `/ ${game.team1_player2.name}`}
+                          <span className="mx-2 text-gray-500">vs</span>
+                          {game.team2_player1?.name} {game.team2_player2 && `/ ${game.team2_player2.name}`}
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          Status: {getStatusText(game.status)}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => navigate(`/games/${game.id}`)}
+                        className="inline-flex items-center px-3 py-1.5 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                      >
+                        Gerenciar
+                      </button>
                     </div>
                   </div>
-                  {game.status === 'finished' && (
-                    <div className="text-sm font-medium text-gray-900">
-                      {game.team1_score} - {game.team2_score}
-                    </div>
-                  )}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className="text-center py-12">
+              <RectangleStackIcon className="mx-auto h-12 w-12 text-gray-400" />
+              <h3 className="mt-2 text-sm font-medium text-gray-900">Nenhum jogo</h3>
+              <p className="mt-1 text-sm text-gray-500">
+                Comece criando um novo jogo para a competição.
+              </p>
+              {competition.status === 'in_progress' && (
+                <div className="mt-6">
+                  <button
+                    onClick={() => setShowGameModal(true)}
+                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  >
+                    <RectangleStackIcon className="h-5 w-5 mr-2" />
+                    Novo Jogo
+                  </button>
                 </div>
-              </li>
-            ))}
-            {games.length === 0 && (
-              <li className="px-4 py-4 sm:px-6 text-center text-gray-500">
-                Nenhum jogo registrado
-              </li>
-            )}
-          </ul>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -332,9 +391,9 @@ function CompetitionDetails() {
           setShowGameModal(false);
           setSelectedGame(null);
         }}
-        game={selectedGame}
+        players={players}
         competitionId={id}
-        onSubmit={loadCompetitionData}
+        onSubmit={handleCreateGame}
       />
 
       <ChampionsModal

@@ -18,20 +18,17 @@ function GameForm({ players, onSubmit, onCancel, competitionId }) {
       return;
     }
 
-    // Converter IDs de string para número se necessário
-    const team1 = formData.team1.map(id => parseInt(id));
-    const team2 = formData.team2.map(id => parseInt(id));
-
+    // Criar objeto do jogo no formato do banco de dados
     const newGame = {
-      id: Date.now(),
-      competitionId,
-      team1,
-      team2,
-      matches: [],
-      completed: false,
-      started: false,
-      winner: null,
-      createdAt: new Date().toISOString()
+      competition_id: competitionId,
+      team1_player1_id: formData.team1[0],
+      team1_player2_id: formData.team1[1] || null,
+      team2_player1_id: formData.team2[0],
+      team2_player2_id: formData.team2[1] || null,
+      status: 'pending',
+      winner_team: null,
+      team1_score: 0,
+      team2_score: 0
     };
 
     onSubmit(newGame);

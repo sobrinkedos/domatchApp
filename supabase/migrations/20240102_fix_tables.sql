@@ -32,9 +32,9 @@ create table public.competition_players (
     unique(competition_id, player_id)
 );
 
-create table public.games (
-    id uuid default gen_random_uuid() primary key,
-    created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+-- Criar tabela de jogos
+create table if not exists public.games (
+    id uuid default extensions.uuid_generate_v4() primary key,
     user_id uuid references auth.users not null,
     competition_id uuid references public.competitions not null,
     team1_player1_id uuid references public.players not null,
@@ -44,22 +44,25 @@ create table public.games (
     status text check (status in ('pending', 'in_progress', 'finished', 'cancelled')) default 'pending' not null,
     winner_team integer check (winner_team in (1, 2)),
     team1_score integer default 0 not null check (team1_score >= 0),
-    team2_score integer default 0 not null check (team2_score >= 0)
+    team2_score integer default 0 not null check (team2_score >= 0),
+    matches jsonb[] default array[]::jsonb[],
+    created_at timestamptz default now() not null
 );
 
-create index players_user_id_idx on public.players(user_id);
-create index competitions_user_id_idx on public.competitions(user_id);
-create index competition_players_competition_id_idx on public.competition_players(competition_id);
-create index competition_players_player_id_idx on public.competition_players(player_id);
-create index competition_players_user_id_idx on public.competition_players(user_id);
-create index games_user_id_idx on public.games(user_id);
-create index games_competition_id_idx on public.games(competition_id);
+create index if not exists players_user_id_idx on public.players(user_id);
+create index if not exists competitions_user_id_idx on public.competitions(user_id);
+create index if not exists competition_players_competition_id_idx on public.competition_players(competition_id);
+create index if not exists competition_players_player_id_idx on public.competition_players(player_id);
+create index if not exists competition_players_user_id_idx on public.competition_players(user_id);
+create index if not exists games_user_id_idx on public.games(user_id);
+create index if not exists games_competition_id_idx on public.games(competition_id);
 
 alter table public.players enable row level security;
 alter table public.competitions enable row level security;
 alter table public.competition_players enable row level security;
 alter table public.games enable row level security;
 
+-- Políticas para a tabela players
 create policy "Users can view their own players"
     on public.players for select
     using (auth.jwt() ->> 'sub' = user_id::text);
@@ -76,6 +79,7 @@ create policy "Users can delete their own players"
     on public.players for delete
     using (auth.jwt() ->> 'sub' = user_id::text);
 
+-- Políticas para a tabela competitions
 create policy "Users can view their own competitions"
     on public.competitions for select
     using (auth.jwt() ->> 'sub' = user_id::text);
@@ -92,6 +96,7 @@ create policy "Users can delete their own competitions"
     on public.competitions for delete
     using (auth.jwt() ->> 'sub' = user_id::text);
 
+-- Políticas para a tabela competition_players
 create policy "Users can view their own competition players"
     on public.competition_players for select
     using (auth.jwt() ->> 'sub' = user_id::text);
@@ -104,7 +109,8 @@ create policy "Users can delete their own competition players"
     on public.competition_players for delete
     using (auth.jwt() ->> 'sub' = user_id::text);
 
-create policy "Users can view their own games"
+-- Políticas para a tabela games
+create policy "Users can read their own games"
     on public.games for select
     using (auth.jwt() ->> 'sub' = user_id::text);
 

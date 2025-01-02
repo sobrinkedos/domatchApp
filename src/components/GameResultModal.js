@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import Modal from './Modal';
 
 const resultTypes = [
   { id: 'simple', points: 1, label: 'Batida Simples', color: 'blue' },
@@ -8,32 +9,20 @@ const resultTypes = [
   { id: 'draw', points: 0, label: 'Empate', color: 'yellow', fullWidth: true }
 ];
 
-function GameResultModal({ isOpen, onClose, onSubmit, game }) {
+function GameResultModal({ isOpen, onClose, onSubmit, game, team1Players, team2Players }) {
   const [selectedType, setSelectedType] = useState(null);
   const [winningTeam, setWinningTeam] = useState(null);
 
   if (!isOpen || !game) return null;
 
-  const team1Names = (game.team1 || [])
-    .map(playerId => {
-      const player = JSON.parse(localStorage.getItem('players') || '[]')
-        .find(p => p.id === playerId);
-      return player ? player.name : '';
-    })
-    .join(' / ');
-
-  const team2Names = (game.team2 || [])
-    .map(playerId => {
-      const player = JSON.parse(localStorage.getItem('players') || '[]')
-        .find(p => p.id === playerId);
-      return player ? player.name : '';
-    })
-    .join(' / ');
-
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!selectedType) return;
-    if (selectedType.id !== 'draw' && !winningTeam) return;
+    if (selectedType !== 'draw' && !winningTeam) return;
+
+    const resultType = resultTypes.find(type => type.id === selectedType);
+    const team1Score = selectedType === 'draw' ? 1 : (winningTeam === 1 ? resultType.points : 0);
+    const team2Score = selectedType === 'draw' ? 1 : (winningTeam === 2 ? resultType.points : 0);
 
     // Verificar se a última partida foi empate
     const matches = game.matches || [];
@@ -41,7 +30,7 @@ function GameResultModal({ isOpen, onClose, onSubmit, game }) {
     const wasLastMatchDraw = lastMatch?.result?.type === 'draw';
     
     // Calcular pontuação total
-    let points = selectedType.points;
+    let points = selectedType === 'draw' ? 1 : resultType.points;
     let hasExtraPoint = false;
 
     // Se não for empate e a última partida foi empate, adiciona ponto extra
@@ -58,138 +47,123 @@ function GameResultModal({ isOpen, onClose, onSubmit, game }) {
       points
     });
 
-    if (typeof onSubmit === 'function') {
-      const result = {
-        type: selectedType.id,
-        winningTeam: selectedType.id === 'draw' ? null : winningTeam,
-        points,
-        hasExtraPoint,
-        team1Score: selectedType.id === 'draw' ? points : (winningTeam === 1 ? points : 0),
-        team2Score: selectedType.id === 'draw' ? points : (winningTeam === 2 ? points : 0)
-      };
+    onSubmit({
+      type: selectedType,
+      winningTeam: selectedType === 'draw' ? null : winningTeam,
+      team1Score,
+      team2Score,
+      points,
+      hasExtraPoint
+    });
 
-      onSubmit(result);
-      onClose();
-
-      // Reset form
-      setSelectedType(null);
-      setWinningTeam(null);
-    }
+    // Limpar seleção
+    setSelectedType(null);
+    setWinningTeam(null);
   };
 
-  const getButtonColorClass = (type) => {
-    if (!type) return 'bg-gray-100 text-gray-700 hover:bg-gray-200';
-    
-    switch (type.color) {
-      case 'blue':
-        return 'bg-blue-500 hover:bg-blue-600 text-white';
-      case 'green':
-        return 'bg-green-500 hover:bg-green-600 text-white';
-      case 'purple':
-        return 'bg-purple-500 hover:bg-purple-600 text-white';
-      case 'red':
-        return 'bg-red-500 hover:bg-red-600 text-white';
-      case 'yellow':
-        return 'bg-yellow-500 hover:bg-yellow-600 text-white';
-      default:
-        return 'bg-gray-500 hover:bg-gray-600 text-white';
-    }
-  };
+  // Formatar nomes dos jogadores
+  const team1Names = team1Players.map(p => p.name).join(' & ');
+  const team2Names = team2Players.map(p => p.name).join(' & ');
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
-      <div className="flex items-center justify-center min-h-screen p-4">
-        <div className="fixed inset-0 bg-black bg-opacity-30" onClick={onClose}></div>
+    <Modal isOpen={isOpen} onClose={onClose} title="Registrar Resultado">
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Tipos de Resultado */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Tipo de Resultado
+          </label>
+          <div className="grid grid-cols-2 gap-2">
+            {resultTypes.map((type) => (
+              <button
+                key={type.id}
+                type="button"
+                onClick={() => {
+                  setSelectedType(type.id);
+                  if (type.id === 'draw') setWinningTeam(null);
+                }}
+                className={`
+                  ${type.fullWidth ? 'col-span-2' : ''}
+                  p-3 rounded-lg border-2 transition-colors
+                  ${selectedType === type.id
+                    ? 'border-blue-500 bg-blue-50 text-blue-700'
+                    : 'border-gray-300 hover:border-gray-400'
+                  }
+                `}
+              >
+                {type.label}
+                {type.id === 'draw' && (
+                  <span className="block text-sm text-gray-500 mt-1">
+                    Nenhum time marca ponto. Próxima vitória vale +1 ponto extra.
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
 
-        <div className="relative bg-white rounded-lg p-6 max-w-md w-full mx-4">
-          <h2 className="text-lg font-medium text-gray-900 mb-6">
-            Registrar Resultado
-          </h2>
-
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-              <h3 className="text-sm font-medium text-gray-700 mb-3">
-                Tipo de Resultado
-              </h3>
-              <div className="grid grid-cols-2 gap-2">
-                {resultTypes.map((type) => (
-                  <button
-                    key={type.id}
-                    type="button"
-                    onClick={() => {
-                      setSelectedType(type);
-                      if (type.id === 'draw') setWinningTeam(null);
-                    }}
-                    className={`${
-                      type.fullWidth ? 'col-span-2' : ''
-                    } p-3 rounded-md font-medium transition-colors ${
-                      selectedType?.id === type.id
-                        ? getButtonColorClass(type)
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
-                  >
-                    {type.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {selectedType && selectedType.id !== 'draw' && (
-              <div>
-                <h3 className="text-sm font-medium text-gray-700 mb-3">
-                  Dupla Vencedora
-                </h3>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setWinningTeam(1)}
-                    className={`p-3 rounded-md font-medium transition-colors ${
-                      winningTeam === 1
-                        ? 'bg-blue-500 hover:bg-blue-600 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
-                  >
-                    {team1Names}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setWinningTeam(2)}
-                    className={`p-3 rounded-md font-medium transition-colors ${
-                      winningTeam === 2
-                        ? 'bg-blue-500 hover:bg-blue-600 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
-                  >
-                    {team2Names}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            <div className="mt-6 flex justify-end space-x-3">
+        {/* Seleção do Time Vencedor */}
+        {selectedType && selectedType !== 'draw' && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Time Vencedor
+            </label>
+            <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
-                onClick={onClose}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+                onClick={() => setWinningTeam(1)}
+                className={`
+                  p-3 rounded-lg border-2 transition-colors
+                  ${winningTeam === 1
+                    ? 'border-green-500 bg-green-50 text-green-700'
+                    : 'border-gray-300 hover:border-gray-400'
+                  }
+                `}
               >
-                Cancelar
+                {team1Names}
               </button>
               <button
-                type="submit"
-                disabled={!selectedType || (selectedType.id !== 'draw' && !winningTeam)}
-                className={`px-4 py-2 text-sm font-medium text-white rounded-md ${
-                  selectedType && (selectedType.id === 'draw' || winningTeam)
-                    ? 'bg-blue-500 hover:bg-blue-600'
-                    : 'bg-gray-400 cursor-not-allowed'
-                }`}
+                type="button"
+                onClick={() => setWinningTeam(2)}
+                className={`
+                  p-3 rounded-lg border-2 transition-colors
+                  ${winningTeam === 2
+                    ? 'border-green-500 bg-green-50 text-green-700'
+                    : 'border-gray-300 hover:border-gray-400'
+                  }
+                `}
               >
-                Salvar
+                {team2Names}
               </button>
             </div>
-          </form>
+          </div>
+        )}
+
+        {/* Botões de Ação */}
+        <div className="flex justify-end space-x-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+          >
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            disabled={!selectedType || (selectedType !== 'draw' && !winningTeam)}
+            className={`
+              px-4 py-2 text-sm font-medium text-white rounded-md
+              ${(!selectedType || (selectedType !== 'draw' && !winningTeam))
+                ? 'bg-gray-400 cursor-not-allowed'
+                : 'bg-blue-600 hover:bg-blue-700'
+              }
+            `}
+          >
+            Registrar
+          </button>
         </div>
-      </div>
-    </div>
+      </form>
+    </Modal>
   );
 }
 
