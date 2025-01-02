@@ -134,8 +134,10 @@ export const getGamesByCompetitionId = async (competitionId) => {
       .from('games')
       .select(`
         *,
-        team1:team1_id(name),
-        team2:team2_id(name)
+        team1_player1:team1_player1_id(id, name),
+        team1_player2:team1_player2_id(id, name),
+        team2_player1:team2_player1_id(id, name),
+        team2_player2:team2_player2_id(id, name)
       `)
       .eq('competition_id', competitionId)
       .order('created_at', { ascending: false });
@@ -150,22 +152,70 @@ export const getGamesByCompetitionId = async (competitionId) => {
 
 export const getPlayersByCompetitionId = async (competitionId) => {
   try {
+    const { data: existingPlayers, error: existingError } = await supabase
+      .from('competition_players')
+      .select('player_id')
+      .eq('competition_id', competitionId);
+
+    if (existingError) throw existingError;
+
+    const playerIds = existingPlayers.map(p => p.player_id);
+    
+    if (playerIds.length === 0) return [];
+
+    const { data: players, error: playersError } = await supabase
+      .from('players')
+      .select('*')
+      .in('id', playerIds);
+
+    if (playersError) throw playersError;
+
+    return players;
+  } catch (error) {
+    console.error('Error getting players by competition:', error);
+    throw error;
+  }
+};
+
+export const getExistingPlayersInCompetition = async (competitionId) => {
+  try {
     const { data, error } = await supabase
       .from('competition_players')
-      .select(`
-        players (
-          id,
-          name,
-          phone
-        )
-      `)
+      .select('player_id')
       .eq('competition_id', competitionId);
 
     if (error) throw error;
-    return data.map(item => item.players);
+    return data.map(p => p.player_id);
   } catch (error) {
-    console.error('Error fetching players:', error);
-    return [];
+    console.error('Error getting existing players:', error);
+    throw error;
+  }
+};
+
+export const addPlayerToCompetition = async (competitionId, playerId) => {
+  try {
+    const { data: userData, error: userError } = await supabase.auth.getUser();
+    if (userError) throw userError;
+
+    const { error } = await supabase
+      .from('competition_players')
+      .insert([
+        {
+          competition_id: competitionId,
+          player_id: playerId,
+          user_id: userData.user.id
+        }
+      ])
+      .select();
+
+    if (error) {
+      // Ignora erro de duplicação
+      if (error.code === '23505') return;
+      throw error;
+    }
+  } catch (error) {
+    console.error('Error adding player to competition:', error);
+    throw error;
   }
 };
 
@@ -214,24 +264,6 @@ export const updateGame = async (id, gameData) => {
     return data;
   } catch (error) {
     console.error('Error updating game:', error);
-    return null;
-  }
-};
-
-export const addPlayerToCompetition = async (competitionId, playerId) => {
-  try {
-    const { data, error } = await supabase
-      .from('competition_players')
-      .insert([{
-        competition_id: competitionId,
-        player_id: playerId
-      }])
-      .select();
-
-    if (error) throw error;
-    return data;
-  } catch (error) {
-    console.error('Error adding player to competition:', error);
     return null;
   }
 };
