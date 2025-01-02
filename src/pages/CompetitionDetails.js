@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import GameModal from '../components/GameModal';
 import ChampionsModal from '../components/ChampionsModal';
+import PlayersModal from '../components/PlayersModal';
 import { 
   ArrowLeftIcon, 
   ClipboardDocumentListIcon,
@@ -29,6 +30,7 @@ function CompetitionDetails() {
   const [error, setError] = useState(null);
   const [showGameModal, setShowGameModal] = useState(false);
   const [showChampionsModal, setShowChampionsModal] = useState(false);
+  const [showPlayersModal, setShowPlayersModal] = useState(false);
   const [selectedGame, setSelectedGame] = useState(null);
 
   useEffect(() => {
@@ -145,6 +147,13 @@ function CompetitionDetails() {
           >
             <ChartBarIcon className="h-5 w-5 mr-2" />
             Estatísticas
+          </button>
+          <button
+            onClick={() => setShowPlayersModal(true)}
+            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          >
+            <UsersIcon className="h-5 w-5 mr-2" />
+            Gerenciar Jogadores
           </button>
         </div>
       </div>
@@ -293,6 +302,13 @@ function CompetitionDetails() {
         isOpen={showChampionsModal}
         onClose={() => setShowChampionsModal(false)}
         champions={competition.champions}
+      />
+
+      <PlayersModal
+        isOpen={showPlayersModal}
+        onClose={() => setShowPlayersModal(false)}
+        competitionId={id}
+        onPlayerAdded={loadCompetitionData}
       />
     </div>
   );
