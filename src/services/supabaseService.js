@@ -41,19 +41,20 @@ export const createPlayer = async (playerData) => {
 // Competitions
 export const getCompetitions = async () => {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
-    
     const { data, error } = await supabase
       .from('competitions')
       .select('*')
-      .eq('user_id', user.id)
       .order('created_at', { ascending: false });
-    
-    if (error) throw error;
+
+    if (error) {
+      console.error('Error fetching competitions:', error);
+      throw new Error('Erro ao buscar competições');
+    }
+
     return data;
-  } catch (err) {
-    console.error('Error in getCompetitions:', err);
-    throw err;
+  } catch (error) {
+    console.error('Error in getCompetitions:', error);
+    throw error;
   }
 };
 
@@ -62,27 +63,29 @@ export const createCompetition = async (competitionData) => {
     const { data: { user } } = await supabase.auth.getUser();
     
     const newCompetition = {
-      name: competitionData.name,
-      description: competitionData.description,
-      start_date: competitionData.start_date,
+      ...competitionData,
       user_id: user.id,
-      status: 'pending'
+      status: 'in_progress',
+      created_at: new Date().toISOString()
     };
     
     console.log('Creating competition with data:', newCompetition);
-    
+
     const { data, error } = await supabase
       .from('competitions')
       .insert([newCompetition])
       .select()
       .single();
-    
-    if (error) throw error;
-    console.log('Created competition:', data);
+
+    if (error) {
+      console.error('Error creating competition:', error);
+      throw new Error('Erro ao criar competição');
+    }
+
     return data;
-  } catch (err) {
-    console.error('Error in createCompetition:', err);
-    throw err;
+  } catch (error) {
+    console.error('Error in createCompetition:', error);
+    throw error;
   }
 };
 
@@ -325,6 +328,151 @@ export const startCompetition = async (competitionId) => {
   } catch (error) {
     console.error('Error starting competition:', error);
     throw error;
+  }
+};
+
+export const finishCompetition = async (competitionId) => {
+  try {
+    // Primeiro, vamos buscar os jogos com os dados dos jogadores
+    const { data: games, error: gamesError } = await supabase
+      .from('games')
+      .select(`
+        *,
+        team1_player1:team1_player1_id(id, name),
+        team1_player2:team1_player2_id(id, name),
+        team2_player1:team2_player1_id(id, name),
+        team2_player2:team2_player2_id(id, name)
+      `)
+      .eq('competition_id', competitionId);
+    
+    if (gamesError) {
+      console.error('Erro ao buscar jogos:', gamesError);
+      throw new Error('Não foi possível carregar os jogos da competição.');
+    }
+
+    // Verificações básicas
+    if (games.length === 0) {
+      throw new Error('Não existem jogos na competição');
+    }
+
+    const hasUnfinishedGames = games.some(game => game.status !== 'finished');
+    if (hasUnfinishedGames) {
+      throw new Error('Existem jogos não finalizados');
+    }
+
+    // Atualizar status da competição
+    const { error: updateError } = await supabase
+      .from('competitions')
+      .update({
+        status: 'finished'
+      })
+      .eq('id', competitionId);
+
+    if (updateError) {
+      console.error('Erro ao atualizar competição:', updateError);
+      throw new Error('Não foi possível atualizar a competição. Por favor, tente novamente.');
+    }
+
+    // Calcular pontuações
+    const playerScores = {};
+    const teamScores = {};
+    const playerRefs = {};
+    
+    // Processar jogos
+    games.forEach(game => {
+      // Guardar referências dos jogadores
+      const players = {
+        team1_player1: game.team1_player1,
+        team1_player2: game.team1_player2,
+        team2_player1: game.team2_player1,
+        team2_player2: game.team2_player2
+      };
+
+      Object.values(players).forEach(player => {
+        if (player?.id && player?.name) {
+          playerRefs[player.id] = player;
+        }
+      });
+
+      // Pontuação individual
+      if (game.winner_team === 1) {
+        if (game.team1_player1?.id) {
+          playerScores[game.team1_player1.id] = (playerScores[game.team1_player1.id] || 0) + 1;
+        }
+        if (game.team1_player2?.id) {
+          playerScores[game.team1_player2.id] = (playerScores[game.team1_player2.id] || 0) + 1;
+        }
+      } else if (game.winner_team === 2) {
+        if (game.team2_player1?.id) {
+          playerScores[game.team2_player1.id] = (playerScores[game.team2_player1.id] || 0) + 1;
+        }
+        if (game.team2_player2?.id) {
+          playerScores[game.team2_player2.id] = (playerScores[game.team2_player2.id] || 0) + 1;
+        }
+      }
+
+      // Pontuação de duplas
+      if (game.winner_team === 1 || game.winner_team === 2) {
+        const winningTeam = game.winner_team === 1 
+          ? [game.team1_player1, game.team1_player2]
+          : [game.team2_player1, game.team2_player2];
+
+        // Verifica se ambos os jogadores da dupla existem
+        if (winningTeam[0]?.id && winningTeam[1]?.id) {
+          const teamKey = [winningTeam[0].id, winningTeam[1].id].sort().join('-');
+          teamScores[teamKey] = (teamScores[teamKey] || 0) + 1;
+        }
+      }
+    });
+
+    // Encontrar vencedores
+    const bestPlayerId = Object.entries(playerScores)
+      .sort(([,a], [,b]) => b - a)[0]?.[0];
+
+    // Encontrar melhor dupla
+    const bestTeamEntry = Object.entries(teamScores)
+      .sort(([,a], [,b]) => b - a)[0];
+
+    const bestTeamKey = bestTeamEntry?.[0];
+    const bestTeamScore = bestTeamEntry?.[1];
+
+    const bestTeamPlayerIds = bestTeamKey ? bestTeamKey.split('-') : [];
+    const bestTeamPlayers = bestTeamPlayerIds.map(id => playerRefs[id]).filter(Boolean);
+
+    // Buscar a competição atualizada
+    const { data: competition, error: fetchError } = await supabase
+      .from('competitions')
+      .select('*')
+      .eq('id', competitionId)
+      .single();
+
+    if (fetchError) {
+      console.error('Erro ao buscar competição atualizada:', fetchError);
+      throw new Error('Não foi possível carregar os dados atualizados da competição.');
+    }
+
+    // Formatar resposta
+    return {
+      ...competition,
+      champions: {
+        best_player: bestPlayerId ? playerRefs[bestPlayerId] : null,
+        best_team: bestTeamPlayers.length === 2 ? bestTeamPlayers : null,
+        player_scores: playerScores,
+        team_scores: teamScores
+      }
+    };
+  } catch (err) {
+    console.error('Error finishing competition:', err);
+    // Tentar reverter o status se algo der errado
+    try {
+      await supabase
+        .from('competitions')
+        .update({ status: 'in_progress' })
+        .eq('id', competitionId);
+    } catch (revertError) {
+      console.error('Erro ao reverter status:', revertError);
+    }
+    throw err;
   }
 };
 

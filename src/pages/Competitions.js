@@ -36,7 +36,7 @@ function Competitions() {
     try {
       setLoading(true);
       const newCompetition = await createCompetition(competitionData);
-      setCompetitions([...competitions, newCompetition]);
+      setCompetitions(prevCompetitions => [newCompetition, ...prevCompetitions]);
       setError(null);
     } catch (err) {
       console.error('Error creating competition:', err);

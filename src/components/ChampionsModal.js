@@ -1,89 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Fragment } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
-import { TrophyIcon } from '@heroicons/react/24/outline';
-import { getGames } from '../services/supabaseService';
+import { TrophyIcon, UserGroupIcon } from '@heroicons/react/24/outline';
 
-function ChampionsModal({ isOpen, onClose }) {
-  const [champions, setChampions] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+function ChampionsModal({ isOpen, onClose, competition }) {
+  if (!competition) return null;
 
-  useEffect(() => {
-    const loadChampions = async () => {
-      try {
-        setLoading(true);
-        const games = await getGames();
-        const completedGames = games.filter(game => game.status === 'completed');
-        
-        // Processar os dados para obter os campeões
-        const playersStats = {};
-        
-        completedGames.forEach(game => {
-          const winnerTeam = game.winner_team;
-          if (!winnerTeam) return;
-
-          const winners = winnerTeam === 1 
-            ? [game.team1_player1, game.team1_player2].filter(Boolean)
-            : [game.team2_player1, game.team2_player2].filter(Boolean);
-
-          winners.forEach(player => {
-            if (!player) return;
-            if (!playersStats[player.id]) {
-              playersStats[player.id] = {
-                id: player.id,
-                name: player.name,
-                wins: 0,
-                games: 0,
-                winRate: 0
-              };
-            }
-            playersStats[player.id].wins += 1;
-            playersStats[player.id].games += 1;
-          });
-
-          // Adicionar jogos perdidos
-          const losers = winnerTeam === 1
-            ? [game.team2_player1, game.team2_player2].filter(Boolean)
-            : [game.team1_player1, game.team1_player2].filter(Boolean);
-
-          losers.forEach(player => {
-            if (!player) return;
-            if (!playersStats[player.id]) {
-              playersStats[player.id] = {
-                id: player.id,
-                name: player.name,
-                wins: 0,
-                games: 0,
-                winRate: 0
-              };
-            }
-            playersStats[player.id].games += 1;
-          });
-        });
-
-        // Calcular taxa de vitória e ordenar
-        const championsArray = Object.values(playersStats)
-          .map(player => ({
-            ...player,
-            winRate: ((player.wins / player.games) * 100).toFixed(1)
-          }))
-          .sort((a, b) => b.wins - a.wins || b.winRate - a.winRate)
-          .slice(0, 10);
-
-        setChampions(championsArray);
-      } catch (err) {
-        console.error('Erro ao carregar campeões:', err);
-        setError('Erro ao carregar os dados dos campeões');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (isOpen) {
-      loadChampions();
-    }
-  }, [isOpen]);
+  const { best_player, best_team_player1, best_team_player2, player_scores, team_scores } = competition;
 
   return (
     <Transition appear show={isOpen} as={Fragment}>
@@ -114,69 +37,79 @@ function ChampionsModal({ isOpen, onClose }) {
               <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
                 <Dialog.Title
                   as="h3"
-                  className="text-lg font-medium leading-6 text-gray-900 flex items-center"
+                  className="text-lg font-medium leading-6 text-gray-900 flex items-center justify-center mb-4"
                 >
                   <TrophyIcon className="h-6 w-6 text-yellow-500 mr-2" />
-                  Hall da Fama
+                  Vencedores da Competição
                 </Dialog.Title>
 
-                {loading ? (
-                  <div className="mt-4 flex justify-center">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-500"></div>
-                  </div>
-                ) : error ? (
-                  <div className="mt-4 text-center text-red-600">
-                    {error}
-                  </div>
-                ) : (
-                  <div className="mt-4">
-                    <div className="space-y-4">
-                      {champions.map((champion, index) => (
-                        <div
-                          key={champion.id}
-                          className="flex items-center justify-between p-3 rounded-lg bg-gray-50"
-                        >
-                          <div className="flex items-center space-x-3">
-                            <div
-                              className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                                index === 0
-                                  ? 'bg-yellow-100 text-yellow-800'
-                                  : index === 1
-                                  ? 'bg-gray-200 text-gray-800'
-                                  : index === 2
-                                  ? 'bg-orange-100 text-orange-800'
-                                  : 'bg-blue-100 text-blue-800'
-                              }`}
-                            >
-                              {index + 1}
-                            </div>
-                            <span className="font-medium text-gray-900">
-                              {champion.name}
-                            </span>
-                          </div>
-                          <div className="text-right">
-                            <div className="text-sm font-medium text-gray-900">
-                              {champion.wins} vitórias
-                            </div>
-                            <div className="text-xs text-gray-500">
-                              {champion.winRate}% em {champion.games} jogos
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                      {champions.length === 0 && (
-                        <div className="text-center text-gray-500 py-4">
-                          Nenhum campeão ainda
-                        </div>
+                <div className="mt-4 space-y-6">
+                  {/* Melhor Jogador Individual */}
+                  <div className="bg-yellow-50 p-4 rounded-lg">
+                    <h4 className="text-sm font-medium text-yellow-800 flex items-center">
+                      <TrophyIcon className="h-5 w-5 mr-2" />
+                      Melhor Jogador Individual
+                    </h4>
+                    <div className="mt-2">
+                      {best_player ? (
+                        <>
+                          <p className="text-lg font-semibold text-yellow-900">
+                            {best_player.name}
+                          </p>
+                          <p className="text-sm text-yellow-700">
+                            {player_scores?.[best_player.id]} vitórias
+                          </p>
+                        </>
+                      ) : (
+                        <p className="text-lg font-semibold text-yellow-900">
+                          Não disponível
+                        </p>
                       )}
                     </div>
                   </div>
-                )}
+
+                  {/* Melhor Dupla */}
+                  <div className="bg-blue-50 p-4 rounded-lg">
+                    <h4 className="text-sm font-medium text-blue-800 flex items-center">
+                      <UserGroupIcon className="h-5 w-5 mr-2" />
+                      Melhor Dupla
+                    </h4>
+                    <div className="mt-2">
+                      {best_team_player1 && best_team_player2 ? (
+                        <>
+                          <p className="text-lg font-semibold text-blue-900">
+                            {best_team_player1.name} / {best_team_player2.name}
+                          </p>
+                          {team_scores && (
+                            <p className="text-sm text-blue-700">
+                              {team_scores[[best_team_player1.id, best_team_player2.id].sort().join('-')]} vitórias
+                            </p>
+                          )}
+                        </>
+                      ) : (
+                        <p className="text-lg font-semibold text-blue-900">
+                          Não disponível
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Estatísticas Gerais */}
+                  <div className="mt-4 border-t border-gray-200 pt-4">
+                    <h4 className="text-sm font-medium text-gray-700 mb-2">
+                      Estatísticas Gerais
+                    </h4>
+                    <div className="text-sm text-gray-600">
+                      <p>Total de jogadores pontuados: {player_scores ? Object.keys(player_scores).length : 0}</p>
+                      <p>Total de duplas pontuadas: {team_scores ? Object.keys(team_scores).length : 0}</p>
+                    </div>
+                  </div>
+                </div>
 
                 <div className="mt-6">
                   <button
                     type="button"
-                    className="inline-flex justify-center rounded-md border border-transparent bg-blue-100 px-4 py-2 text-sm font-medium text-blue-900 hover:bg-blue-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                    className="w-full inline-flex justify-center rounded-md border border-transparent bg-blue-100 px-4 py-2 text-sm font-medium text-blue-900 hover:bg-blue-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
                     onClick={onClose}
                   >
                     Fechar
