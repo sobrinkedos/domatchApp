@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import GameModal from '../components/GameModal';
-import ChampionsModal from '../components/ChampionsModal';
 import PlayersModal from '../components/PlayersModal';
 import { 
   ArrowLeftIcon, 
@@ -17,7 +16,8 @@ import {
   CalendarIcon,
   UsersIcon,
   RectangleStackIcon,
-  PlayIcon
+  PlayIcon,
+  FlagIcon
 } from '@heroicons/react/24/outline';
 import { 
   getCompetitionById, 
@@ -38,7 +38,6 @@ function CompetitionDetails() {
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
   const [showGameModal, setShowGameModal] = useState(false);
-  const [showChampionsModal, setShowChampionsModal] = useState(false);
   const [showPlayersModal, setShowPlayersModal] = useState(false);
   const [selectedGame, setSelectedGame] = useState(null);
   const [processing, setProcessing] = useState(false);
@@ -53,11 +52,13 @@ function CompetitionDetails() {
       
       // Carregar dados da competição
       const competitionData = await getCompetitionById(id);
-      if (!competitionData) {
-        throw new Error('Competição não encontrada');
+      console.log('Dados da competição:', competitionData); // Log para debug
+      if (competitionData.status === 'finished') {
+        const finishedData = await finishCompetition(id);
+        setCompetition(finishedData);
+      } else {
+        setCompetition(competitionData);
       }
-      console.log('Competition Data:', competitionData); // Debug
-      setCompetition(competitionData);
 
       // Carregar jogos da competição
       const gamesData = await getGamesByCompetitionId(id);
@@ -153,10 +154,10 @@ function CompetitionDetails() {
         return;
       }
 
-      await finishCompetition(id);
-      await loadCompetitionData();
+      const finishedData = await finishCompetition(id);
+      console.log('Dados após finalizar:', finishedData); // Log para debug
+      setCompetition(finishedData);
       setSuccessMessage('Competição encerrada com sucesso!');
-      setShowChampionsModal(true);
     } catch (error) {
       console.error('Error finishing competition:', error);
       setError(error.message || 'Erro ao encerrar competição');
@@ -207,25 +208,20 @@ function CompetitionDetails() {
             <button
               onClick={handleFinishCompetition}
               disabled={processing}
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:bg-gray-400 disabled:cursor-not-allowed"
+              className={`inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white ${
+                processing ? 'bg-gray-400' : 'bg-green-600 hover:bg-green-700'
+              }`}
             >
-              <TrophyIcon className="h-5 w-5 mr-2" />
-              {processing ? 'Encerrando...' : 'Encerrar Competição'}
+              <FlagIcon className="h-5 w-5 mr-2" />
+              {processing ? 'Processando...' : 'Encerrar Competição'}
             </button>
           )}
           <button
-            onClick={() => navigate(`/competitions/${id}/games`)}
-            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            onClick={() => navigate('/competitions')}
+            className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
           >
-            <RectangleStackIcon className="h-5 w-5 mr-2" />
-            Gerenciar Jogos
-          </button>
-          <button
-            onClick={() => navigate(`/competitions/${id}/stats`)}
-            className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-          >
-            <ChartBarIcon className="h-5 w-5 mr-2" />
-            Estatísticas
+            <ArrowLeftIcon className="h-5 w-5 mr-2 text-gray-500" />
+            Voltar
           </button>
         </div>
       </div>
@@ -311,6 +307,77 @@ function CompetitionDetails() {
             <PlayIcon className="h-5 w-5 mr-2" />
             {processing ? 'Iniciando...' : 'Iniciar Competição'}
           </button>
+        </div>
+      )}
+
+      {/* Seção de Vencedores */}
+      {competition?.status === 'finished' && (
+        <div className="bg-white shadow-md rounded-lg p-6 mb-6">
+          <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center">
+            <TrophyIcon className="h-8 w-8 text-yellow-500 mr-2" />
+            Vencedores da Competição
+          </h2>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Melhor Jogador Individual */}
+            <div className="bg-yellow-50 rounded-lg p-4">
+              <h3 className="text-lg font-medium text-yellow-800 flex items-center mb-3">
+                <TrophyIcon className="h-5 w-5 mr-2" />
+                Melhor Jogador Individual
+              </h3>
+              <div className="mt-2">
+                {competition.champions?.best_player ? (
+                  <>
+                    <p className="text-xl font-semibold text-yellow-900">
+                      {competition.champions.best_player.name}
+                    </p>
+                    <p className="text-sm text-yellow-700 mt-1">
+                      {competition.champions.player_scores?.[competition.champions.best_player.id] || 0} vitórias
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-gray-500 italic">
+                    Nenhum jogador pontuado
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Melhor Dupla */}
+            <div className="bg-blue-50 rounded-lg p-4">
+              <h3 className="text-lg font-medium text-blue-800 flex items-center mb-3">
+                <UserGroupIcon className="h-5 w-5 mr-2" />
+                Melhor Dupla
+              </h3>
+              <div className="mt-2">
+                {competition.champions?.best_team ? (
+                  <>
+                    <p className="text-xl font-semibold text-blue-900">
+                      {competition.champions.best_team[0].name} / {competition.champions.best_team[1].name}
+                    </p>
+                    <p className="text-sm text-blue-700 mt-1">
+                      {competition.champions.team_scores?.[competition.champions.best_team.map(p => p.id).sort().join('-')] || 0} vitórias
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-gray-500 italic">
+                    Nenhuma dupla pontuada
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Estatísticas Gerais */}
+          <div className="mt-6 pt-4 border-t border-gray-200">
+            <h3 className="text-lg font-medium text-gray-700 mb-3">
+              Estatísticas Gerais
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
+              <p>Total de jogadores pontuados: {Object.keys(competition.champions?.player_scores || {}).length}</p>
+              <p>Total de duplas pontuadas: {Object.keys(competition.champions?.team_scores || {}).length}</p>
+            </div>
+          </div>
         </div>
       )}
 
@@ -405,13 +472,15 @@ function CompetitionDetails() {
             <h3 className="text-lg leading-6 font-medium text-gray-900">
               Jogadores
             </h3>
-            <button
-              onClick={() => setShowPlayersModal(true)}
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-            >
-              <UsersIcon className="h-5 w-5 mr-2" />
-              Gerenciar Jogadores
-            </button>
+            {competition.status !== 'finished' && (
+              <button
+                onClick={() => setShowPlayersModal(true)}
+                className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+              >
+                <UsersIcon className="h-5 w-5 mr-2 text-gray-500" />
+                Gerenciar Jogadores
+              </button>
+            )}
           </div>
         </div>
         <div className="border-t border-gray-200">
@@ -450,12 +519,6 @@ function CompetitionDetails() {
         players={players}
         competitionId={id}
         onSubmit={handleCreateGame}
-      />
-
-      <ChampionsModal
-        isOpen={showChampionsModal}
-        onClose={() => setShowChampionsModal(false)}
-        competition={competition}
       />
 
       <PlayersModal
