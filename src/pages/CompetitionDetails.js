@@ -25,7 +25,7 @@ import {
   getPlayersByCompetitionId, 
   startCompetition,
   createGame,
-  finishCompetition 
+  finishCompetition
 } from '../services/supabaseService';
 
 function CompetitionDetails() {
@@ -42,41 +42,34 @@ function CompetitionDetails() {
   const [selectedGame, setSelectedGame] = useState(null);
   const [processing, setProcessing] = useState(false);
 
-  useEffect(() => {
-    loadCompetitionData();
-  }, [id]);
-
-  const loadCompetitionData = async () => {
+  const loadData = async () => {
     try {
       setLoading(true);
-      
-      // Carregar dados da competição
-      const competitionData = await getCompetitionById(id);
-      console.log('Dados da competição:', competitionData); // Log para debug
-      if (competitionData.status === 'finished') {
-        const finishedData = await finishCompetition(id);
-        setCompetition(finishedData);
-      } else {
-        setCompetition(competitionData);
+      const [competitionData, gamesData, playersData] = await Promise.all([
+        getCompetitionById(id),
+        getGamesByCompetitionId(id),
+        getPlayersByCompetitionId(id)
+      ]);
+
+      if (!competitionData) {
+        setError('Competição não encontrada');
+        return;
       }
 
-      // Carregar jogos da competição
-      const gamesData = await getGamesByCompetitionId(id);
+      setCompetition(competitionData);
       setGames(gamesData);
-
-      // Carregar jogadores da competição
-      const playersData = await getPlayersByCompetitionId(id);
-      console.log('Players Data:', playersData); // Debug
       setPlayers(playersData);
-
-      setError(null);
     } catch (err) {
-      console.error('Error loading competition data:', err);
+      console.error('Erro ao carregar dados:', err);
       setError('Erro ao carregar dados da competição');
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    loadData();
+  }, [id]);
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -113,7 +106,7 @@ function CompetitionDetails() {
     try {
       setProcessing(true);
       await startCompetition(id);
-      await loadCompetitionData();
+      await loadData();
     } catch (error) {
       console.error('Error starting competition:', error);
       // TODO: Adicionar toast de erro
@@ -126,7 +119,7 @@ function CompetitionDetails() {
     try {
       setProcessing(true);
       await createGame(gameData);
-      await loadCompetitionData();
+      await loadData();
     } catch (error) {
       console.error('Error creating game:', error);
       // TODO: Adicionar toast de erro
@@ -310,77 +303,6 @@ function CompetitionDetails() {
         </div>
       )}
 
-      {/* Seção de Vencedores */}
-      {competition?.status === 'finished' && (
-        <div className="bg-white shadow-md rounded-lg p-6 mb-6">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center">
-            <TrophyIcon className="h-8 w-8 text-yellow-500 mr-2" />
-            Vencedores da Competição
-          </h2>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Melhor Jogador Individual */}
-            <div className="bg-yellow-50 rounded-lg p-4">
-              <h3 className="text-lg font-medium text-yellow-800 flex items-center mb-3">
-                <TrophyIcon className="h-5 w-5 mr-2" />
-                Melhor Jogador Individual
-              </h3>
-              <div className="mt-2">
-                {competition.champions?.best_player ? (
-                  <>
-                    <p className="text-xl font-semibold text-yellow-900">
-                      {competition.champions.best_player.name}
-                    </p>
-                    <p className="text-sm text-yellow-700 mt-1">
-                      {competition.champions.player_scores?.[competition.champions.best_player.id] || 0} vitórias
-                    </p>
-                  </>
-                ) : (
-                  <p className="text-gray-500 italic">
-                    Nenhum jogador pontuado
-                  </p>
-                )}
-              </div>
-            </div>
-
-            {/* Melhor Dupla */}
-            <div className="bg-blue-50 rounded-lg p-4">
-              <h3 className="text-lg font-medium text-blue-800 flex items-center mb-3">
-                <UserGroupIcon className="h-5 w-5 mr-2" />
-                Melhor Dupla
-              </h3>
-              <div className="mt-2">
-                {competition.champions?.best_team ? (
-                  <>
-                    <p className="text-xl font-semibold text-blue-900">
-                      {competition.champions.best_team[0].name} / {competition.champions.best_team[1].name}
-                    </p>
-                    <p className="text-sm text-blue-700 mt-1">
-                      {competition.champions.team_scores?.[competition.champions.best_team.map(p => p.id).sort().join('-')] || 0} vitórias
-                    </p>
-                  </>
-                ) : (
-                  <p className="text-gray-500 italic">
-                    Nenhuma dupla pontuada
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Estatísticas Gerais */}
-          <div className="mt-6 pt-4 border-t border-gray-200">
-            <h3 className="text-lg font-medium text-gray-700 mb-3">
-              Estatísticas Gerais
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
-              <p>Total de jogadores pontuados: {Object.keys(competition.champions?.player_scores || {}).length}</p>
-              <p>Total de duplas pontuadas: {Object.keys(competition.champions?.team_scores || {}).length}</p>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Lista de Jogos */}
       <div className="bg-white shadow overflow-hidden sm:rounded-lg">
         <div className="px-4 py-5 sm:px-6">
@@ -425,6 +347,36 @@ function CompetitionDetails() {
                           <span className="mx-2 text-gray-500">vs</span>
                           {game.team2_player1?.name} {game.team2_player2 && `/ ${game.team2_player2.name}`}
                         </div>
+                        {game.status === 'finished' && (
+                          <div className="mt-1">
+                            <span className="text-sm font-medium text-gray-900">
+                              {game.winner_team === 1 ? (
+                                <span className="text-green-600">Time 1 venceu</span>
+                              ) : (
+                                <span className="text-green-600">Time 2 venceu</span>
+                              )}
+                            </span>
+                            <span className="mx-2 text-gray-500">•</span>
+                            <span className="text-sm text-gray-700">
+                              {game.team1_score} x {game.team2_score}
+                            </span>
+                            {(game.is_buchuda || game.is_buchuda_de_re) && (
+                              <>
+                                <span className="mx-2 text-gray-500">•</span>
+                                {game.is_buchuda && (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
+                                    👑 Buchuda
+                                  </span>
+                                )}
+                                {game.is_buchuda_de_re && (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                                    🔄 Buchuda de Ré
+                                  </span>
+                                )}
+                              </>
+                            )}
+                          </div>
+                        )}
                         <div className="text-sm text-gray-500">
                           Status: {getStatusText(game.status)}
                         </div>
@@ -525,7 +477,7 @@ function CompetitionDetails() {
         isOpen={showPlayersModal}
         onClose={() => setShowPlayersModal(false)}
         competitionId={id}
-        onPlayerAdded={loadCompetitionData}
+        onPlayerAdded={loadData}
       />
     </div>
   );

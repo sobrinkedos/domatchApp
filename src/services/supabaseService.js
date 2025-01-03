@@ -502,27 +502,88 @@ export const getGames = async (competitionId) => {
   }
 };
 
-export async function updateGameStatus(gameId, status, winnerTeam, team1Score, team2Score, matches) {
+export const finishGame = async (gameId, winnerTeam, team1Score, team2Score) => {
   try {
+    // Verificar se é uma buchuda ou buchuda de ré
+    const isBuchuda = team1Score === 6 && team2Score === 0 || team2Score === 6 && team1Score === 0;
+    const isBuchudaDeRe = (team1Score === 6 && team2Score === 5) || (team2Score === 6 && team1Score === 5);
+
     const { data, error } = await supabase
       .from('games')
       .update({
-        status,
+        status: 'finished',
         winner_team: winnerTeam,
         team1_score: team1Score,
         team2_score: team2Score,
-        matches
+        is_buchuda: isBuchuda,
+        is_buchuda_de_re: isBuchudaDeRe,
+        finished_at: new Date().toISOString()
       })
       .eq('id', gameId)
-      .select();
+      .select()
+      .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('Error finishing game:', error);
+      throw new Error('Erro ao finalizar jogo');
+    }
+
     return data;
   } catch (error) {
-    console.error('Erro ao atualizar status do jogo:', error);
+    console.error('Error in finishGame:', error);
     throw error;
   }
-}
+};
+
+export const getSpecialVictoriesStats = async (competitionId) => {
+  try {
+    const { data: specialVictories, error } = await supabase
+      .from('games')
+      .select(`
+        *,
+        team1_player1:team1_player1_id(id, name),
+        team1_player2:team1_player2_id(id, name),
+        team2_player1:team2_player1_id(id, name),
+        team2_player2:team2_player2_id(id, name)
+      `)
+      .eq('competition_id', competitionId)
+      .eq('status', 'finished')
+      .or('team1_score.eq.6,team2_score.eq.6');
+
+    if (error) {
+      console.error('Error fetching special victories:', error);
+      throw new Error('Erro ao buscar vitórias especiais');
+    }
+
+    // Processar vitórias especiais
+    const buchudas = specialVictories.filter(game => 
+      (game.team1_score === 6 && game.team2_score === 0) || 
+      (game.team2_score === 6 && game.team1_score === 0)
+    );
+
+    const buchudasDeRe = specialVictories.filter(game => {
+      const winnerScore = Math.max(game.team1_score, game.team2_score);
+      const loserScore = Math.min(game.team1_score, game.team2_score);
+      return winnerScore === 6 && loserScore === 5;
+    });
+
+    return {
+      buchudas: buchudas.map(game => ({
+        ...game,
+        is_buchuda: true,
+        is_buchuda_de_re: false
+      })),
+      buchudasDeRe: buchudasDeRe.map(game => ({
+        ...game,
+        is_buchuda: false,
+        is_buchuda_de_re: true
+      }))
+    };
+  } catch (error) {
+    console.error('Error in getSpecialVictoriesStats:', error);
+    throw error;
+  }
+};
 
 export const getGameById = async (id) => {
   try {

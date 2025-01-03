@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import GameResultModal from '../components/GameResultModal';
-import { ArrowLeftIcon, TrophyIcon } from '@heroicons/react/24/outline';
-import { getGameById, getPlayerById, updateGameStatus } from '../services/supabaseService';
+import { ArrowLeftIcon, TrophyIcon, FireIcon } from '@heroicons/react/24/outline';
+import { getGameById, getPlayerById, finishGame, updateGame } from '../services/supabaseService';
 
 const resultTypes = [
   { id: 'simple', points: 1, label: 'Batida Simples' },
@@ -104,25 +104,20 @@ function GameDetails() {
       const gameFinished = newTeam1Score >= 6 || newTeam2Score >= 6;
       const winnerTeam = gameFinished ? (newTeam1Score >= 6 ? 1 : 2) : null;
       
-      const updatedGame = { 
-        ...game,
-        status: gameFinished ? 'finished' : 'in_progress',
-        winner_team: winnerTeam,
-        team1_score: newTeam1Score,
-        team2_score: newTeam2Score,
-        matches: newMatches
-      };
+      if (gameFinished) {
+        await finishGame(game.id, winnerTeam, newTeam1Score, newTeam2Score);
+      } else {
+        await updateGame(game.id, { 
+          status: 'in_progress',
+          team1_score: newTeam1Score,
+          team2_score: newTeam2Score,
+          matches: newMatches
+        });
+      }
 
-      await updateGameStatus(
-        game.id, 
-        updatedGame.status,
-        updatedGame.winner_team,
-        updatedGame.team1_score,
-        updatedGame.team2_score,
-        newMatches
-      );
-
-      setGame(updatedGame);
+      // Recarregar os dados do jogo para obter as informações atualizadas
+      const updatedGameData = await getGameById(game.id);
+      setGame(updatedGameData);
       setMatches(newMatches);
       setIsResultModalOpen(false);
     } catch (error) {
@@ -176,13 +171,34 @@ function GameDetails() {
 
       {/* Status do Jogo */}
       {game.status === 'finished' && (
-        <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-8">
-          <div className="flex items-center">
-            <TrophyIcon className="h-6 w-6 text-green-600 mr-2" />
-            <h2 className="text-lg font-medium text-green-900">
-              Jogo Finalizado! Time {game.winner_team} venceu por {game.winner_team === 1 ? game.team1_score : game.team2_score} a {game.winner_team === 1 ? game.team2_score : game.team1_score}
-            </h2>
+        <div className="space-y-4">
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+            <div className="flex items-center">
+              <TrophyIcon className="h-6 w-6 text-green-600 mr-2" />
+              <h2 className="text-lg font-medium text-green-900">
+                Jogo Finalizado! Time {game.winner_team} venceu por {game.winner_team === 1 ? game.team1_score : game.team2_score} a {game.winner_team === 1 ? game.team2_score : game.team1_score}
+              </h2>
+            </div>
           </div>
+
+          {/* Vitórias Especiais */}
+          {(game.is_buchuda || game.is_buchuda_de_re) && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <div className="flex items-center">
+                <FireIcon className="h-6 w-6 text-yellow-600 mr-2" />
+                <div>
+                  <h2 className="text-lg font-medium text-yellow-900">
+                    {game.is_buchuda && 'Buchuda!'} 
+                    {game.is_buchuda_de_re && 'Buchuda de Ré!'}
+                  </h2>
+                  <p className="text-sm text-yellow-700 mt-1">
+                    {game.is_buchuda && 'Time vencedor ganhou sem que o adversário fizesse pontos!'}
+                    {game.is_buchuda_de_re && 'Time vencedor virou o jogo após estar perdendo de 5x0!'}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
