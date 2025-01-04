@@ -209,13 +209,6 @@ function CompetitionDetails() {
               {processing ? 'Processando...' : 'Encerrar Competição'}
             </button>
           )}
-          <button
-            onClick={() => navigate('/competitions')}
-            className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
-          >
-            <ArrowLeftIcon className="h-5 w-5 mr-2 text-gray-500" />
-            Voltar
-          </button>
         </div>
       </div>
 
@@ -361,8 +354,7 @@ function CompetitionDetails() {
                               {game.team1_score} x {game.team2_score}
                             </span>
                             {(game.is_buchuda || game.is_buchuda_de_re) && (
-                              <>
-                                <span className="mx-2 text-gray-500">•</span>
+                              <><span className="mx-2 text-gray-500">•</span>
                                 {game.is_buchuda && (
                                   <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
                                     👑 Buchuda
@@ -373,8 +365,8 @@ function CompetitionDetails() {
                                     🔄 Buchuda de Ré
                                   </span>
                                 )}
-                              </>
-                            )}
+                              </>)
+                            }
                           </div>
                         )}
                         <div className="text-sm text-gray-500">
