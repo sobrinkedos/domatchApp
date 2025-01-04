@@ -149,6 +149,7 @@ export const getGamesByCompetitionId = async (competitionId) => {
       .from('games')
       .select(`
         *,
+        matches,
         team1_player1:team1_player1_id(id, name),
         team1_player2:team1_player2_id(id, name),
         team2_player1:team2_player1_id(id, name),
@@ -502,11 +503,80 @@ export const getGames = async (competitionId) => {
   }
 };
 
-export const finishGame = async (gameId, winnerTeam, team1Score, team2Score) => {
+export const getGameById = async (id) => {
   try {
-    // Verificar se é uma buchuda ou buchuda de ré
-    const isBuchuda = team1Score === 6 && team2Score === 0 || team2Score === 6 && team1Score === 0;
-    const isBuchudaDeRe = (team1Score === 6 && team2Score === 5) || (team2Score === 6 && team1Score === 5);
+    const { data, error } = await supabase
+      .from('games')
+      .select(`
+        *,
+        team1_player1:team1_player1_id(id, name),
+        team1_player2:team1_player2_id(id, name),
+        team2_player1:team2_player1_id(id, name),
+        team2_player2:team2_player2_id(id, name)
+      `)
+      .eq('id', id)
+      .single();
+
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('Error getting game:', error);
+    return null;
+  }
+};
+
+/**
+ * ATENÇÃO: NÃO MODIFICAR ESTA FUNÇÃO SEM AUTORIZAÇÃO!
+ * Esta função é responsável por finalizar um jogo e calcular vitórias especiais (buchuda e buchuda de ré).
+ * Última atualização: 04/01/2025
+ * Autor: Codeium
+ * 
+ * @param {string} gameId - ID do jogo
+ * @param {number} winnerTeam - Time vencedor (1 ou 2)
+ * @param {number} team1Score - Pontuação do time 1
+ * @param {number} team2Score - Pontuação do time 2
+ * @param {Array} matches - Array com o histórico de partidas
+ * @returns {Promise<Object>} Dados do jogo atualizado
+ */
+export const finishGame = async (gameId, winnerTeam, team1Score, team2Score, matches) => {
+  try {
+    // Verificar se é uma buchuda (time vencedor fez 6 pontos e o perdedor 0)
+    const isBuchuda = (winnerTeam === 1 && team1Score === 6 && team2Score === 0) || 
+                     (winnerTeam === 2 && team2Score === 6 && team1Score === 0);
+
+    // Verificar se é uma buchuda de ré
+    let isBuchudaDeRe = false;
+    
+    if (matches && matches.length > 0) {
+      // Calcular pontuações acumuladas ao longo do jogo
+      let team1Accumulated = 0;
+      let team2Accumulated = 0;
+      let hadFiveToZero = false;
+      let losingTeam = null;
+      
+      for (const match of matches) {
+        // Atualizar pontuações
+        if (match.winningTeam === 1) {
+          team1Accumulated += match.points;
+        } else if (match.winningTeam === 2) {
+          team2Accumulated += match.points;
+        }
+        
+        // Verificar se em algum momento houve 5x0
+        if (team1Accumulated === 0 && team2Accumulated === 5) {
+          hadFiveToZero = true;
+          losingTeam = 1;
+        } else if (team2Accumulated === 0 && team1Accumulated === 5) {
+          hadFiveToZero = true;
+          losingTeam = 2;
+        }
+      }
+
+      // É buchuda de ré se o time que estava perdendo de 5x0 ganhou o jogo
+      if (hadFiveToZero && losingTeam === winnerTeam) {
+        isBuchudaDeRe = true;
+      }
+    }
 
     const { data, error } = await supabase
       .from('games')
@@ -517,10 +587,18 @@ export const finishGame = async (gameId, winnerTeam, team1Score, team2Score) => 
         team2_score: team2Score,
         is_buchuda: isBuchuda,
         is_buchuda_de_re: isBuchudaDeRe,
+        matches,
         finished_at: new Date().toISOString()
       })
       .eq('id', gameId)
-      .select()
+      .select(`
+        *,
+        matches,
+        team1_player1:team1_player1_id(id, name),
+        team1_player2:team1_player2_id(id, name),
+        team2_player1:team2_player1_id(id, name),
+        team2_player2:team2_player2_id(id, name)
+      `)
       .single();
 
     if (error) {
@@ -582,22 +660,6 @@ export const getSpecialVictoriesStats = async (competitionId) => {
   } catch (error) {
     console.error('Error in getSpecialVictoriesStats:', error);
     throw error;
-  }
-};
-
-export const getGameById = async (id) => {
-  try {
-    const { data, error } = await supabase
-      .from('games')
-      .select('*')
-      .eq('id', id)
-      .single();
-
-    if (error) throw error;
-    return data;
-  } catch (error) {
-    console.error('Error getting game:', error);
-    return null;
   }
 };
 

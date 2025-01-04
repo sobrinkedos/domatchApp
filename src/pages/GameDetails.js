@@ -58,6 +58,12 @@ function GameDetails() {
     loadData();
   }, [id]);
 
+  /**
+   * ATENÇÃO: NÃO MODIFICAR ESTA FUNÇÃO SEM AUTORIZAÇÃO!
+   * Esta função é responsável por registrar os resultados das partidas e calcular vitórias especiais.
+   * Última atualização: 04/01/2025
+   * Autor: Codeium
+   */
   const handleMatchSubmit = async (result) => {
     try {
       // Encontrar o tipo de resultado
@@ -104,10 +110,11 @@ function GameDetails() {
       const gameFinished = newTeam1Score >= 6 || newTeam2Score >= 6;
       const winnerTeam = gameFinished ? (newTeam1Score >= 6 ? 1 : 2) : null;
       
+      let updatedGameData;
       if (gameFinished) {
-        await finishGame(game.id, winnerTeam, newTeam1Score, newTeam2Score);
+        updatedGameData = await finishGame(game.id, winnerTeam, newTeam1Score, newTeam2Score, newMatches);
       } else {
-        await updateGame(game.id, { 
+        updatedGameData = await updateGame(game.id, { 
           status: 'in_progress',
           team1_score: newTeam1Score,
           team2_score: newTeam2Score,
@@ -116,9 +123,11 @@ function GameDetails() {
       }
 
       // Recarregar os dados do jogo para obter as informações atualizadas
-      const updatedGameData = await getGameById(game.id);
+      if (!updatedGameData) {
+        updatedGameData = await getGameById(game.id);
+      }
       setGame(updatedGameData);
-      setMatches(newMatches);
+      setMatches(updatedGameData.matches || newMatches);
       setIsResultModalOpen(false);
     } catch (error) {
       console.error('Erro ao atualizar jogo:', error);

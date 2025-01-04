@@ -56,6 +56,8 @@ function CompetitionDetails() {
         return;
       }
 
+      console.log('Games Data:', gamesData); // Log para debug
+
       setCompetition(competitionData);
       setGames(gamesData);
       setPlayers(playersData);
@@ -209,6 +211,7 @@ function CompetitionDetails() {
               {processing ? 'Processando...' : 'Encerrar Competição'}
             </button>
           )}
+          
         </div>
       </div>
 
@@ -350,11 +353,15 @@ function CompetitionDetails() {
                               )}
                             </span>
                             <span className="mx-2 text-gray-500">•</span>
+                            {/* ATENÇÃO: NÃO MODIFICAR ESTA SEÇÃO SEM AUTORIZAÇÃO! */}
+                            {/* Última atualização: 04/01/2025 */}
+                            {/* Autor: Codeium */}
+                            {/* Esta seção é responsável por exibir os badges de vitórias especiais */}
                             <span className="text-sm text-gray-700">
                               {game.team1_score} x {game.team2_score}
                             </span>
                             {(game.is_buchuda || game.is_buchuda_de_re) && (
-                              <div>
+                              <span className="inline-flex items-center">
                                 <span className="mx-2 text-gray-500">•</span>
                                 {game.is_buchuda && (
                                   <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
@@ -362,11 +369,11 @@ function CompetitionDetails() {
                                   </span>
                                 )}
                                 {game.is_buchuda_de_re && (
-                                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                                  <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
                                     🔄 Buchuda de Ré
                                   </span>
                                 )}
-                              </div>
+                              </span>
                             )}
                           </div>
                         )}
