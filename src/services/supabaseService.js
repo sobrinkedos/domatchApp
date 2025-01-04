@@ -150,6 +150,8 @@ export const getGamesByCompetitionId = async (competitionId) => {
       .select(`
         *,
         matches,
+        is_buchuda,
+        is_buchuda_de_re,
         team1_player1:team1_player1_id(id, name),
         team1_player2:team1_player2_id(id, name),
         team2_player1:team2_player1_id(id, name),
@@ -279,14 +281,26 @@ export const createGame = async (gameData) => {
 
 export const updateGame = async (id, gameData) => {
   try {
+    console.log('Atualizando jogo:', { id, gameData }); // Log para debug
+
     const { data, error } = await supabase
       .from('games')
       .update(gameData)
       .eq('id', id)
-      .select()
+      .select(`
+        *,
+        matches,
+        is_buchuda,
+        is_buchuda_de_re,
+        team1_player1:team1_player1_id(id, name),
+        team1_player2:team1_player2_id(id, name),
+        team2_player1:team2_player1_id(id, name),
+        team2_player2:team2_player2_id(id, name)
+      `)
       .single();
 
     if (error) throw error;
+    console.log('Jogo atualizado:', data); // Log para debug
     return data;
   } catch (error) {
     console.error('Error updating game:', error);
@@ -509,6 +523,9 @@ export const getGameById = async (id) => {
       .from('games')
       .select(`
         *,
+        matches,
+        is_buchuda,
+        is_buchuda_de_re,
         team1_player1:team1_player1_id(id, name),
         team1_player2:team1_player2_id(id, name),
         team2_player1:team2_player1_id(id, name),
@@ -518,9 +535,10 @@ export const getGameById = async (id) => {
       .single();
 
     if (error) throw error;
+    console.log('Dados do jogo:', data); // Log para debug
     return data;
   } catch (error) {
-    console.error('Error getting game:', error);
+    console.error('Error fetching game:', error);
     return null;
   }
 };
@@ -540,9 +558,13 @@ export const getGameById = async (id) => {
  */
 export const finishGame = async (gameId, winnerTeam, team1Score, team2Score, matches) => {
   try {
-    // Verificar se é uma buchuda (time vencedor fez 6 pontos e o perdedor 0)
-    const isBuchuda = (winnerTeam === 1 && team1Score === 6 && team2Score === 0) || 
-                     (winnerTeam === 2 && team2Score === 6 && team1Score === 0);
+    console.log('Finalizando jogo:', { gameId, winnerTeam, team1Score, team2Score, matches });
+
+    // Verificar se é uma buchuda (time vencedor fez 6 ou mais pontos e o perdedor 0)
+    const isBuchuda = (winnerTeam === 1 && team1Score >= 6 && team2Score === 0) || 
+                     (winnerTeam === 2 && team2Score >= 6 && team1Score === 0);
+
+    console.log('É buchuda?', isBuchuda);
 
     // Verificar se é uma buchuda de ré
     let isBuchudaDeRe = false;
@@ -562,21 +584,28 @@ export const finishGame = async (gameId, winnerTeam, team1Score, team2Score, mat
           team2Accumulated += match.points;
         }
         
+        console.log('Pontuação acumulada:', { team1Accumulated, team2Accumulated });
+        
         // Verificar se em algum momento houve 5x0
         if (team1Accumulated === 0 && team2Accumulated === 5) {
           hadFiveToZero = true;
           losingTeam = 1;
+          console.log('Time 1 está perdendo de 5x0');
         } else if (team2Accumulated === 0 && team1Accumulated === 5) {
           hadFiveToZero = true;
           losingTeam = 2;
+          console.log('Time 2 está perdendo de 5x0');
         }
       }
 
       // É buchuda de ré se o time que estava perdendo de 5x0 ganhou o jogo
       if (hadFiveToZero && losingTeam === winnerTeam) {
         isBuchudaDeRe = true;
+        console.log('É buchuda de ré!');
       }
     }
+
+    console.log('Atualizando jogo com:', { isBuchuda, isBuchudaDeRe });
 
     const { data, error } = await supabase
       .from('games')
@@ -587,13 +616,15 @@ export const finishGame = async (gameId, winnerTeam, team1Score, team2Score, mat
         team2_score: team2Score,
         is_buchuda: isBuchuda,
         is_buchuda_de_re: isBuchudaDeRe,
-        matches,
+        matches: matches,
         finished_at: new Date().toISOString()
       })
       .eq('id', gameId)
       .select(`
         *,
         matches,
+        is_buchuda,
+        is_buchuda_de_re,
         team1_player1:team1_player1_id(id, name),
         team1_player2:team1_player2_id(id, name),
         team2_player1:team2_player1_id(id, name),
@@ -605,6 +636,8 @@ export const finishGame = async (gameId, winnerTeam, team1Score, team2Score, mat
       console.error('Error finishing game:', error);
       throw new Error('Erro ao finalizar jogo');
     }
+
+    console.log('Jogo atualizado:', data);
 
     return data;
   } catch (error) {

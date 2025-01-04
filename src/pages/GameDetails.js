@@ -112,6 +112,15 @@ function GameDetails() {
       
       let updatedGameData;
       if (gameFinished) {
+        console.log('Finalizando jogo com:', { 
+          gameId: game.id, 
+          winnerTeam, 
+          newTeam1Score, 
+          newTeam2Score, 
+          newMatches,
+          matchesState: matches
+        }); // Log para debug
+
         updatedGameData = await finishGame(game.id, winnerTeam, newTeam1Score, newTeam2Score, newMatches);
       } else {
         updatedGameData = await updateGame(game.id, { 
@@ -126,6 +135,9 @@ function GameDetails() {
       if (!updatedGameData) {
         updatedGameData = await getGameById(game.id);
       }
+
+      console.log('Dados atualizados do jogo:', updatedGameData); // Log para debug
+
       setGame(updatedGameData);
       setMatches(updatedGameData.matches || newMatches);
       setIsResultModalOpen(false);

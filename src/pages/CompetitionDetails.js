@@ -57,6 +57,7 @@ function CompetitionDetails() {
       }
 
       console.log('Games Data:', gamesData); // Log para debug
+      console.log('Games com vitórias especiais:', gamesData.filter(g => g.is_buchuda || g.is_buchuda_de_re)); // Log para debug
 
       setCompetition(competitionData);
       setGames(gamesData);
@@ -360,8 +361,17 @@ function CompetitionDetails() {
                             <span className="text-sm text-gray-700">
                               {game.team1_score} x {game.team2_score}
                             </span>
+                            {console.log('Dados do jogo para badges:', { 
+                              id: game.id,
+                              is_buchuda: game.is_buchuda,
+                              is_buchuda_de_re: game.is_buchuda_de_re,
+                              team1_score: game.team1_score,
+                              team2_score: game.team2_score,
+                              winner_team: game.winner_team,
+                              status: game.status
+                            })}
                             {(game.is_buchuda || game.is_buchuda_de_re) && (
-                              <span className="inline-flex items-center">
+                              <>
                                 <span className="mx-2 text-gray-500">•</span>
                                 {game.is_buchuda && (
                                   <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
@@ -373,7 +383,7 @@ function CompetitionDetails() {
                                     🔄 Buchuda de Ré
                                   </span>
                                 )}
-                              </span>
+                              </>
                             )}
                           </div>
                         )}
