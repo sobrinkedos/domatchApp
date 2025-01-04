@@ -354,7 +354,8 @@ function CompetitionDetails() {
                               {game.team1_score} x {game.team2_score}
                             </span>
                             {(game.is_buchuda || game.is_buchuda_de_re) && (
-                              <><span className="mx-2 text-gray-500">•</span>
+                              <div>
+                                <span className="mx-2 text-gray-500">•</span>
                                 {game.is_buchuda && (
                                   <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
                                     👑 Buchuda
@@ -365,8 +366,8 @@ function CompetitionDetails() {
                                     🔄 Buchuda de Ré
                                   </span>
                                 )}
-                              </>)
-                            }
+                              </div>
+                            )}
                           </div>
                         )}
                         <div className="text-sm text-gray-500">
